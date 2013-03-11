@@ -1,0 +1,74 @@
+/**
+ * The Rundeck salt plugin build file
+ */
+import org.gradle.api.internal.GradleInternal
+import org.gradle.api.internal.project.ProjectInternal
+
+apply plugin: 'java';
+apply plugin: 'eclipse';
+apply plugin: 'idea';
+apply from: 'gradle/cobertura.gradle'
+
+description 'This plugin provides the ability execute tasks on salt masters'
+eclipse.project.name = ":${name}"
+
+ext.pluginClassNames = 'com.salesforce.rundeck.plugin.SaltLocalNodeStepPlugin,com.salesforce.rundeck.plugin.SaltApiNodeStepPlugin'
+
+repositories {
+    mavenLocal()
+    maven {
+        url mavenCentralUrl
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '1.4'
+}
+
+defaultTasks 'test', 'testCoberturaReport', 'assemble'
+
+sourceCompatibility = 1.6
+targetCompatibility = 1.6
+
+// produce a jar file for our source files
+task sourceJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.java
+}
+
+// add all of the artifacts above to our archives list
+artifacts {
+    archives sourceJar
+}
+
+configurations {
+    pluginCompile
+    compile {
+        extendsFrom pluginCompile
+    }
+}
+
+dependencies {
+    compile (
+        'org.rundeck:rundeck-core:1.5+'
+    )
+    pluginCompile (
+        'org.apache.commons:commons-exec:1.1',
+        'commons-httpclient:commons-httpclient:3.0.1',
+        'com.google.code.gson:gson:2.2.2'
+    )
+    testCompile (
+        'junit:junit:4.8.2',
+        'org.mockito:mockito-all:1.9.5'
+    )
+}
+
+jar {
+    manifest {
+        attributes 'Rundeck-Plugin-Version': rundeckPluginVersion,
+            'Rundeck-Plugin-Archive': 'true',
+            'Rundeck-Plugin-File-Version': version,
+            'Rundeck-Plugin-Classnames': pluginClassNames
+    }
+    from configurations.pluginCompile.collect { it.isDirectory() ? it : zipTree(it) }
+}
