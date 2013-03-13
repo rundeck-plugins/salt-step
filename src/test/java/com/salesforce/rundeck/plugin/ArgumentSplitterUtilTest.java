@@ -40,6 +40,14 @@ public class ArgumentSplitterUtilTest {
         Assert.assertEquals("1 2", args.get(0));
         Assert.assertEquals("3", args.get(1));
     }
+    
+    @Test
+    public void testSplitWithEscapes() {
+        List<String> args = ArgumentSplitterUtil.split("cmd.run 'echo \"some message\"'");
+        Assert.assertEquals(2, args.size());
+        Assert.assertEquals("cmd.run", args.get(0));
+        Assert.assertEquals("echo \"some message\"", args.get(1));   
+    }
 
     @Test
     public void testSplitEmptyString() {
