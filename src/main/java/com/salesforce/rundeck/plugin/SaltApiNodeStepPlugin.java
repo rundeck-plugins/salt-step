@@ -28,6 +28,7 @@ import com.dtolabs.rundeck.plugins.step.NodeStepPlugin;
 import com.dtolabs.rundeck.plugins.step.PluginStepContext;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.salesforce.rundeck.plugin.util.ArgumentParser;
 import com.salesforce.rundeck.plugin.validation.SaltStepValidationException;
 
 /**
@@ -166,7 +167,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     protected String submitJob(PluginStepContext context, HttpClient client, String authToken, String minionId)
             throws HttpException, IOException, SaltApiResponseException, SaltTargettingMismatchException {
         StringBuilder bodyString = new StringBuilder();
-        List<String> args = ArgumentSplitterUtil.split(function);
+        List<String> args = ArgumentParser.DEFAULT_ARGUMENT_SPLITTER.parse(function);
         bodyString.append(SALT_API_FUNCTION_PARAM_NAME).append("=")
                 .append(URLEncoder.encode(args.get(0), CHAR_SET_ENCODING)).append("&")
                 .append(SALT_API_TARGET_PARAM_NAME).append("=").append(URLEncoder.encode(minionId, CHAR_SET_ENCODING));
