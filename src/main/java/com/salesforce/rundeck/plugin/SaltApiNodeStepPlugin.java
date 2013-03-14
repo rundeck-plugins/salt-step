@@ -90,13 +90,13 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     protected HttpFactory httpFactory = new HttpFactory();
     protected long pollFrequency = 15000L;
 
-    @PluginProperty(title = "SALT_API_END_POINT", description = "Salt Api end point", required = true)
+    @PluginProperty(title = "SALT_API_END_POINT", description = "Salt Api end point", required = true, defaultValue="${option.SALT_API_END_POINT}")
     protected String saltEndpoint;
 
     @PluginProperty(title = "Function", description = "Function (including args) to invoke on salt minions", required = true)
     protected String function;
 
-    @PluginProperty(title = "EAuth", description = "Salt Master's external authentication system", required = true)
+    @PluginProperty(title = "EAuth", description = "Salt Master's external authentication system", required = true, defaultValue="${option.SALT_API_EAUTH}")
     protected String eAuth;
 
     @Override
