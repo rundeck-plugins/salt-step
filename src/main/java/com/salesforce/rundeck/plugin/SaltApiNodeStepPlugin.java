@@ -1,5 +1,7 @@
 package com.salesforce.rundeck.plugin;
 
+import static com.salesforce.rundeck.plugin.validation.Validators.checkNotEmpty;
+
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.URLEncoder;
@@ -12,6 +14,7 @@ import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.methods.StringRequestEntity;
+import org.apache.commons.validator.routines.UrlValidator;
 
 import com.dtolabs.rundeck.core.Constants;
 import com.dtolabs.rundeck.core.common.INodeEntry;
@@ -25,6 +28,7 @@ import com.dtolabs.rundeck.plugins.step.NodeStepPlugin;
 import com.dtolabs.rundeck.plugins.step.PluginStepContext;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.salesforce.rundeck.plugin.validation.SaltStepValidationException;
 
 /**
  * This plugin allows salt execution on a specific minion using the salt-api
@@ -33,17 +37,16 @@ import com.google.gson.reflect.TypeToken;
  * Pre-requisites:
  * <ul>
  * <li>Salt-api must be installed.</li>
- * <li>Project node resources must be configured with the name as the salt
- * minion's name as configured on the salt master.</li>
- * <li>SALT_USER and SALT_PASSWORD options must be configured and provided on
- * the job.</li>
+ * <li>Project node resources must be configured with the name as the salt minion's name as configured on the salt
+ * master.</li>
+ * <li>SALT_USER and SALT_PASSWORD options must be configured and provided on the job.</li>
  * </ul>
  */
 @Plugin(name = SaltApiNodeStepPlugin.SERVICE_PROVIDER_NAME, service = ServiceNameConstants.WorkflowNodeStep)
 @PluginDescription(title = "Remote Salt Execution", description = "Run a command on a remote salt master through salt-api.")
 public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     public enum SaltApiNodeStepFailureReason implements FailureReason {
-        AUTHENTICATION_FAILURE, COMMUNICATION_FAILURE, SALT_API_FAILURE, SALT_TARGET_MISMATCH, INTERRUPTED;
+        ARGUMENTS_MISSING, ARGUMENTS_INVALID, AUTHENTICATION_FAILURE, COMMUNICATION_FAILURE, SALT_API_FAILURE, SALT_TARGET_MISMATCH, INTERRUPTED;
     }
 
     protected static class HttpFactory {
@@ -62,6 +65,8 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
 
     public static final String SERVICE_PROVIDER_NAME = "salt-api-exec";
 
+    protected static final String[] VALID_SALT_API_END_POINT_SCHEMES = { "http", "https" };
+
     protected static final String LOGIN_RESOURCE = "/login";
     protected static final String MINION_RESOURCE = "/minions";
     protected static final String JOBS_RESOURCE = "/jobs";
@@ -76,6 +81,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     protected static final Type MINION_RESPONSE_TYPE = new TypeToken<List<Map<String, Object>>>() {}.getType();
     protected static final Type JOB_RESPONSE_TYPE = new TypeToken<Map<String, List<Object>>>() {}.getType();
 
+    // -- Parameter names for REST calls to salt-api --
     protected static final String SALT_API_FUNCTION_PARAM_NAME = "fun";
     protected static final String SALT_API_ARGUMENTS_PARAM_NAME = "arg";
     protected static final String SALT_API_TARGET_PARAM_NAME = "tgt";
@@ -83,30 +89,44 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     protected static final String SALT_API_PASSWORD_PARAM_NAME = "password";
     protected static final String SALT_API_EAUTH_PARAM_NAME = "eauth";
 
+    // -- Option names expected to be passed in from rundeck --
     protected static final String RUNDECK_DATA_CONTEXT_OPTION_KEY = "option";
-    protected static final String SALT_USER_PARAM = "SALT_USER";
-    protected static final String SALT_PASSWORD_PARAM = "SALT_PASSWORD";
+    protected static final String SALT_API_END_POINT_OPTION_NAME = "SALT_API_END_POINT";
+    protected static final String SALT_API_FUNCTION_OPTION_NAME = "Function";
+    protected static final String SALT_API_EAUTH_OPTION_NAME = "SALT_API_EAUTH";
+    protected static final String SALT_USER_OPTION_NAME = "SALT_USER";
+    protected static final String SALT_PASSWORD_OPTION_NAME = "SALT_PASSWORD";
 
     protected HttpFactory httpFactory = new HttpFactory();
     protected long pollFrequency = 15000L;
 
-    @PluginProperty(title = "SALT_API_END_POINT", description = "Salt Api end point", required = true, defaultValue="${option.SALT_API_END_POINT}")
+    @PluginProperty(title = SALT_API_END_POINT_OPTION_NAME, description = "Salt Api end point", required = true, defaultValue = "${option."
+            + SALT_API_END_POINT_OPTION_NAME + "}")
     protected String saltEndpoint;
 
-    @PluginProperty(title = "Function", description = "Function (including args) to invoke on salt minions", required = true)
+    @PluginProperty(title = SALT_API_FUNCTION_OPTION_NAME, description = "Function (including args) to invoke on salt minions", required = true)
     protected String function;
 
-    @PluginProperty(title = "EAuth", description = "Salt Master's external authentication system", required = true, defaultValue="${option.SALT_API_EAUTH}")
+    @PluginProperty(title = SALT_API_EAUTH_OPTION_NAME, description = "Salt Master's external authentication system", required = true, defaultValue = "${option."
+            + SALT_API_EAUTH_OPTION_NAME + "}")
     protected String eAuth;
 
     @Override
     public void executeNodeStep(PluginStepContext context, Map<String, Object> configuration, INodeEntry entry)
             throws NodeStepException {
+        Map<String, String> optionData = context.getDataContext().get(RUNDECK_DATA_CONTEXT_OPTION_KEY);
+        if (optionData == null) {
+            throw new NodeStepException("Missing data context.", SaltApiNodeStepFailureReason.ARGUMENTS_MISSING,
+                    entry.getNodename());
+        }
+        String user = optionData.get(SALT_USER_OPTION_NAME);
+        String password = optionData.get(SALT_PASSWORD_OPTION_NAME);
+
+        validate(user, password, entry);
+
         try {
             HttpClient client = httpFactory.createHttpClient();
-            Map<String, String> optionData = context.getDataContext().get(RUNDECK_DATA_CONTEXT_OPTION_KEY);
-            String authToken = authenticate(client, optionData.get(SALT_USER_PARAM),
-                    optionData.get(SALT_PASSWORD_PARAM));
+            String authToken = authenticate(client, user, password);
 
             if (authToken == null) {
                 throw new NodeStepException("Authentication failure",
@@ -117,8 +137,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                 String dispatchedJid = submitJob(context, client, authToken, entry.getNodename());
                 String jobOutput = waitForJidResponse(context, client, authToken, dispatchedJid, entry.getNodename());
                 context.getLogger().log(Constants.INFO_LEVEL, jobOutput);
-            }
-            catch (InterruptedException e) {
+            } catch (InterruptedException e) {
                 throw new NodeStepException(e.getMessage(), SaltApiNodeStepFailureReason.INTERRUPTED,
                         entry.getNodename());
             } catch (SaltTargettingMismatchException e) {
@@ -192,6 +211,22 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
             }
         } finally {
             post.releaseConnection();
+        }
+    }
+
+    protected void validate(String user, String password, INodeEntry entry) throws SaltStepValidationException {
+        checkNotEmpty(SALT_API_END_POINT_OPTION_NAME, saltEndpoint, SaltApiNodeStepFailureReason.ARGUMENTS_MISSING,
+                entry);
+        checkNotEmpty(SALT_API_FUNCTION_OPTION_NAME, function, SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, entry);
+        checkNotEmpty(SALT_API_EAUTH_OPTION_NAME, eAuth, SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, entry);
+        checkNotEmpty(SALT_USER_OPTION_NAME, user, SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, entry);
+        checkNotEmpty(SALT_PASSWORD_OPTION_NAME, password, SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, entry);
+
+        UrlValidator urlValidator = new UrlValidator(VALID_SALT_API_END_POINT_SCHEMES, UrlValidator.ALLOW_LOCAL_URLS);
+        if (!urlValidator.isValid(saltEndpoint)) {
+            throw new SaltStepValidationException(SALT_API_END_POINT_OPTION_NAME, String.format(
+                    "%s is not a valid endpoint.", saltEndpoint), SaltApiNodeStepFailureReason.ARGUMENTS_INVALID,
+                    entry.getNodename());
         }
     }
 

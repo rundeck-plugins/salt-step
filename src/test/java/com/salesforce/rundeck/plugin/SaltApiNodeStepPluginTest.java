@@ -18,10 +18,14 @@ import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.methods.StringRequestEntity;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.dtolabs.rundeck.core.Constants;
 import com.dtolabs.rundeck.core.common.INodeEntry;
@@ -30,7 +34,11 @@ import com.dtolabs.rundeck.plugins.PluginLogger;
 import com.dtolabs.rundeck.plugins.step.PluginStepContext;
 import com.salesforce.rundeck.plugin.SaltApiNodeStepPlugin.HttpFactory;
 import com.salesforce.rundeck.plugin.SaltApiNodeStepPlugin.SaltApiNodeStepFailureReason;
+import com.salesforce.rundeck.plugin.validation.SaltStepValidationException;
+import com.salesforce.rundeck.plugin.validation.Validators;
 
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(Validators.class)
 public class SaltApiNodeStepPluginTest {
     protected static final String PARAM_ENDPOINT = "http://localhost";
     protected static final String PARAM_EAUTH = "pam";
@@ -56,6 +64,8 @@ public class SaltApiNodeStepPluginTest {
     protected PluginLogger logger;
     protected INodeEntry node;
     protected Map<String, Object> configuration;
+    protected Map<String, Map<String, String>> dataContext;
+    protected Map<String, String> optionContext;
 
     @Before
     public void setup() {
@@ -100,10 +110,10 @@ public class SaltApiNodeStepPluginTest {
         Mockito.when(node.getNodename()).thenReturn(PARAM_MINION_NAME);
         configuration = new HashMap<String, Object>();
 
-        Map<String, Map<String, String>> dataContext = new HashMap<String, Map<String, String>>();
-        Map<String, String> optionContext = new HashMap<String, String>();
-        optionContext.put(SaltApiNodeStepPlugin.SALT_USER_PARAM, PARAM_USER);
-        optionContext.put(SaltApiNodeStepPlugin.SALT_PASSWORD_PARAM, PARAM_PASSWORD);
+        dataContext = new HashMap<String, Map<String, String>>();
+        optionContext = new HashMap<String, String>();
+        optionContext.put(SaltApiNodeStepPlugin.SALT_USER_OPTION_NAME, PARAM_USER);
+        optionContext.put(SaltApiNodeStepPlugin.SALT_PASSWORD_OPTION_NAME, PARAM_PASSWORD);
         dataContext.put(SaltApiNodeStepPlugin.RUNDECK_DATA_CONTEXT_OPTION_KEY, optionContext);
         Mockito.when(pluginContext.getDataContext()).thenReturn(dataContext);
     }
@@ -299,7 +309,7 @@ public class SaltApiNodeStepPluginTest {
 
     @Test
     public void testExecuteWithAuthenticationFailure() throws Exception {
-        spyPlugin().setupAuthenticate(null);
+        spyPlugin().setupAuthenticate(null).setValidationSuccessful();
 
         try {
             plugin.executeNodeStep(pluginContext, configuration, node);
@@ -312,9 +322,35 @@ public class SaltApiNodeStepPluginTest {
     }
 
     @Test
+    public void testExecuteWithValidationFailure() throws Exception {
+        spyPlugin();
+        SaltStepValidationException e = new SaltStepValidationException("some property", "Some message",
+                SaltApiNodeStepFailureReason.ARGUMENTS_INVALID, node.getNodename());
+        Mockito.doThrow(e).when(plugin)
+                .validate(Mockito.eq(PARAM_USER), Mockito.eq(PARAM_PASSWORD), Mockito.same(node));
+        try {
+            plugin.executeNodeStep(pluginContext, configuration, node);
+            Assert.fail("Expected exception");
+        } catch (SaltStepValidationException ne) {
+            Assert.assertSame(e, ne);
+        }
+    }
+
+    @Test
+    public void testExecuteWithDataContextMissing() {
+        dataContext.clear();
+        try {
+            plugin.executeNodeStep(pluginContext, configuration, node);
+            Assert.fail("Expected exception");
+        } catch (NodeStepException e) {
+            Assert.assertEquals(SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, e.getFailureReason());
+        }
+    }
+
+    @Test
     public void testExecute() throws Exception {
         String authToken = "some token";
-        spyPlugin().setupAuthenticate(authToken);
+        spyPlugin().setupAuthenticate(authToken).setValidationSuccessful();
 
         Mockito.doReturn(OUTPUT_JID)
                 .when(plugin)
@@ -334,7 +370,7 @@ public class SaltApiNodeStepPluginTest {
     @Test
     public void testExecuteWithSaltApiException() throws Exception {
         String authToken = "some token";
-        spyPlugin().setupAuthenticate(authToken);
+        spyPlugin().setupAuthenticate(authToken).setValidationSuccessful();
         String exceptionMessage = "some message";
         Mockito.doThrow(new SaltApiResponseException(exceptionMessage))
                 .when(plugin)
@@ -352,7 +388,7 @@ public class SaltApiNodeStepPluginTest {
     @Test
     public void testExecuteWithSaltTargettingException() throws Exception {
         String authToken = "some token";
-        spyPlugin().setupAuthenticate(authToken);
+        spyPlugin().setupAuthenticate(authToken).setValidationSuccessful();
         String exceptionMessage = "some message";
         Mockito.doThrow(new SaltTargettingMismatchException(exceptionMessage))
                 .when(plugin)
@@ -366,11 +402,11 @@ public class SaltApiNodeStepPluginTest {
             Assert.assertEquals(SaltApiNodeStepFailureReason.SALT_TARGET_MISMATCH, e.getFailureReason());
         }
     }
-    
+
     @Test
     public void testExecuteWithHttpException() throws Exception {
         String authToken = "some token";
-        spyPlugin().setupAuthenticate(authToken);
+        spyPlugin().setupAuthenticate(authToken).setValidationSuccessful();
         String exceptionMessage = "some message";
         Mockito.doThrow(new HttpException(exceptionMessage))
                 .when(plugin)
@@ -388,7 +424,7 @@ public class SaltApiNodeStepPluginTest {
     @Test
     public void testExecuteWithInterruptedException() throws Exception {
         String authToken = "some token";
-        spyPlugin().setupAuthenticate(authToken);
+        spyPlugin().setupAuthenticate(authToken).setValidationSuccessful();
 
         Mockito.doReturn(OUTPUT_JID)
                 .when(plugin)
@@ -545,6 +581,74 @@ public class SaltApiNodeStepPluginTest {
         Mockito.verify(getMethod, Mockito.times(1)).releaseConnection();
     }
 
+    @Test
+    public void testValidateAllArguments() throws SaltStepValidationException {
+        PowerMockito.mockStatic(Validators.class);
+        PowerMockito.doNothing().when(Validators.class);
+        Validators.checkNotEmpty(Mockito.anyString(), Mockito.anyString(),
+                Mockito.any(SaltApiNodeStepFailureReason.class), Mockito.same(node));
+
+        plugin.validate(PARAM_USER, PARAM_PASSWORD, node);
+
+        PowerMockito.verifyStatic();
+        Validators.checkNotEmpty(SaltApiNodeStepPlugin.SALT_API_END_POINT_OPTION_NAME, PARAM_ENDPOINT,
+                SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, node);
+        PowerMockito.verifyStatic();
+        Validators.checkNotEmpty(SaltApiNodeStepPlugin.SALT_API_FUNCTION_OPTION_NAME, PARAM_FUNCTION,
+                SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, node);
+        PowerMockito.verifyStatic();
+        Validators.checkNotEmpty(SaltApiNodeStepPlugin.SALT_API_EAUTH_OPTION_NAME, PARAM_EAUTH,
+                SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, node);
+        PowerMockito.verifyStatic();
+        Validators.checkNotEmpty(SaltApiNodeStepPlugin.SALT_USER_OPTION_NAME, PARAM_USER,
+                SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, node);
+        PowerMockito.verifyStatic();
+        Validators.checkNotEmpty(SaltApiNodeStepPlugin.SALT_PASSWORD_OPTION_NAME, PARAM_PASSWORD,
+                SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, node);
+        PowerMockito.verifyNoMoreInteractions(Validators.class);
+    }
+
+    @Test
+    public void testValidateThrowsIfValidatorThrows() throws SaltStepValidationException {
+        SaltStepValidationException e = new SaltStepValidationException("some property", "Some message",
+                SaltApiNodeStepFailureReason.ARGUMENTS_INVALID, node.getNodename());
+        PowerMockito.mockStatic(Validators.class);
+        PowerMockito.doThrow(e).when(Validators.class);
+        Validators.checkNotEmpty(Mockito.anyString(), Mockito.anyString(),
+                Mockito.any(SaltApiNodeStepFailureReason.class), Mockito.same(node));
+
+        try {
+            plugin.validate(PARAM_USER, PARAM_PASSWORD, node);
+            Assert.fail("Expected exception");
+        } catch (SaltStepValidationException ne) {
+            Assert.assertSame(e, ne);
+        }
+    }
+
+    @Test
+    public void testValidateChecksValidEndpointHttpUrl() throws NodeStepException {
+        plugin.saltEndpoint = "http://some.machine.com";
+        plugin.validate(PARAM_USER, PARAM_PASSWORD, node);
+    }
+
+    @Test
+    public void testValidateChecksValidEndpointHttpsUrl() throws NodeStepException {
+        plugin.saltEndpoint = "https://some.machine.com";
+        plugin.validate(PARAM_USER, PARAM_PASSWORD, node);
+    }
+
+    @Test
+    public void testValidateChecksInvalidEndpointUrl() throws NodeStepException {
+        plugin.saltEndpoint = "ftp://some.machine.com";
+        try {
+            plugin.validate(PARAM_USER, PARAM_PASSWORD, node);
+            Assert.fail("Expected failure.");
+        } catch (SaltStepValidationException e) {
+            Assert.assertEquals(SaltApiNodeStepFailureReason.ARGUMENTS_INVALID, e.getFailureReason());
+            Assert.assertEquals(SaltApiNodeStepPlugin.SALT_API_END_POINT_OPTION_NAME, e.getFieldName());
+        }
+    }
+
     protected SaltApiNodeStepPluginTest spyPlugin() throws Exception {
         plugin = Mockito.spy(plugin);
         return this;
@@ -574,5 +678,11 @@ public class SaltApiNodeStepPluginTest {
         Assert.assertEquals(urlencodedData, captor.getValue().getContent());
         Assert.assertEquals(SaltApiNodeStepPlugin.CHAR_SET_ENCODING, captor.getValue().getCharset());
         Assert.assertTrue(captor.getValue().getContentType().startsWith(SaltApiNodeStepPlugin.REQUEST_CONTENT_TYPE));
+    }
+
+    protected SaltApiNodeStepPluginTest setValidationSuccessful() throws NodeStepException {
+        Mockito.doNothing().when(plugin)
+                .validate(Mockito.eq(PARAM_USER), Mockito.eq(PARAM_PASSWORD), Mockito.same(node));
+        return this;
     }
 }
