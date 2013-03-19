@@ -1,0 +1,6 @@
+---
+
+defaultCommandParser: &defaultCommandParser !!com.salesforce.rundeck.plugin.output.SaltJsonReturnHandler {exitCodeKey: retcode, standardOutputKey: stdout, standardErrorKey: stderr}
+
+handlerMappings:
+    cmd.run_all: *defaultCommandParser

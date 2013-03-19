@@ -43,3 +43,17 @@ The remote execution salt plugin provides three properties which need to be conf
 
 - Make sure that your salt-api setup is fully functional before attempting to execute jobs with this plugin
 - Setting the job output level to debug will print out the raw JSON commands that are being sent as well as the returned output
+
+##Setting up salt return response parsers
+===================
+The salt-step plugins interact with salt and salt-api requesting json payloads as output by default. Salt-step needs to be configured in order to parse this output and behave correctly with respect to exit codes, standard output, and standard error. Salt-step is configured through yaml configuration files.
+
+###YAML Configuration File Format
+```
+handlerMappings:
+  <salt module>[.<salt function>]: <java object implementing com.salesforce.rundeck.plugin.output.SaltReturnHandler>
+```
+
+Salt-step is configured in 2 different places:
+* ```src/main/resources/defaultReturners.yaml```
+* In rundeck-config.properties, the _saltStep.returnHandlers_ property allows for a comma separated list of additional configuration files.

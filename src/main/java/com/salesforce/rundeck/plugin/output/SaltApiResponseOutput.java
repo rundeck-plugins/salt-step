@@ -1,4 +1,4 @@
-package com.salesforce.rundeck.plugin;
+package com.salesforce.rundeck.plugin.output;
 
 import java.util.Collections;
 import java.util.List;

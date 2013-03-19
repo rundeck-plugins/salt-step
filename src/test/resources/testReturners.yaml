@@ -1,0 +1,6 @@
+---
+
+defaultCommandParser: &defaultCommandParser !!com.salesforce.rundeck.plugin.output.DefaultSaltReturnHandler {}
+
+handlerMappings:
+    cmd: *defaultCommandParser

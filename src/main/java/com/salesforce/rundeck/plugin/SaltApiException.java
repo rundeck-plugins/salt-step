@@ -3,8 +3,8 @@ package com.salesforce.rundeck.plugin;
 /**
  * Represents an exception dispatching to salt-api.
  */
-public class SaltApiResponseException extends Exception {
-    public SaltApiResponseException(String message) {
+public class SaltApiException extends Exception {
+    public SaltApiException(String message) {
         super(message);
     }
 }

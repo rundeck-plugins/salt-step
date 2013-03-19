@@ -15,6 +15,8 @@ import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.methods.StringRequestEntity;
 import org.apache.commons.validator.routines.UrlValidator;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import com.dtolabs.rundeck.core.Constants;
 import com.dtolabs.rundeck.core.common.INodeEntry;
@@ -24,12 +26,18 @@ import com.dtolabs.rundeck.core.plugins.Plugin;
 import com.dtolabs.rundeck.plugins.ServiceNameConstants;
 import com.dtolabs.rundeck.plugins.descriptions.PluginDescription;
 import com.dtolabs.rundeck.plugins.descriptions.PluginProperty;
-import com.dtolabs.rundeck.plugins.step.NodeStepPlugin;
 import com.dtolabs.rundeck.plugins.step.PluginStepContext;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.salesforce.rundeck.plugin.util.ArgumentParser;
 import com.salesforce.rundeck.plugin.validation.SaltStepValidationException;
+import com.salesforce.rundeck.plugin.output.DefaultSaltReturnHandler;
+import com.salesforce.rundeck.plugin.output.SaltApiResponseOutput;
+import com.salesforce.rundeck.plugin.output.SaltReturnHandler;
+import com.salesforce.rundeck.plugin.output.SaltReturnHandlerRegistry;
+import com.salesforce.rundeck.plugin.output.SaltReturnResponse;
+import com.salesforce.rundeck.plugin.output.SaltReturnResponseParseException;
+import com.salesforce.rundeck.plugin.util.HttpFactory;
 
 /**
  * This plugin allows salt execution on a specific minion using the salt-api
@@ -43,25 +51,12 @@ import com.salesforce.rundeck.plugin.validation.SaltStepValidationException;
  * <li>SALT_USER and SALT_PASSWORD options must be configured and provided on the job.</li>
  * </ul>
  */
+@Component
 @Plugin(name = SaltApiNodeStepPlugin.SERVICE_PROVIDER_NAME, service = ServiceNameConstants.WorkflowNodeStep)
 @PluginDescription(title = "Remote Salt Execution", description = "Run a command on a remote salt master through salt-api.")
-public class SaltApiNodeStepPlugin implements NodeStepPlugin {
+public class SaltApiNodeStepPlugin extends DependencyManagedNodeStepPlugin {
     public enum SaltApiNodeStepFailureReason implements FailureReason {
-        ARGUMENTS_MISSING, ARGUMENTS_INVALID, AUTHENTICATION_FAILURE, COMMUNICATION_FAILURE, SALT_API_FAILURE, SALT_TARGET_MISMATCH, INTERRUPTED;
-    }
-
-    protected static class HttpFactory {
-        public HttpClient createHttpClient() {
-            return new HttpClient();
-        }
-
-        public PostMethod createPostMethod(String uri) {
-            return new PostMethod(uri);
-        }
-
-        public GetMethod createGetMethod(String uri) {
-            return new GetMethod(uri);
-        }
+        EXIT_CODE, ARGUMENTS_MISSING, ARGUMENTS_INVALID, AUTHENTICATION_FAILURE, COMMUNICATION_FAILURE, SALT_API_FAILURE, SALT_TARGET_MISMATCH, INTERRUPTED;
     }
 
     public static final String SERVICE_PROVIDER_NAME = "salt-api-exec";
@@ -98,7 +93,6 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     protected static final String SALT_USER_OPTION_NAME = "SALT_USER";
     protected static final String SALT_PASSWORD_OPTION_NAME = "SALT_PASSWORD";
 
-    protected HttpFactory httpFactory = new HttpFactory();
     protected long pollFrequency = 15000L;
 
     @PluginProperty(title = SALT_API_END_POINT_OPTION_NAME, description = "Salt Api end point", required = true, defaultValue = "${option."
@@ -111,6 +105,15 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     @PluginProperty(title = SALT_API_EAUTH_OPTION_NAME, description = "Salt Master's external authentication system", required = true, defaultValue = "${option."
             + SALT_API_EAUTH_OPTION_NAME + "}")
     protected String eAuth;
+    
+    @Autowired
+    protected SaltReturnHandler defaultReturnHandler;
+
+    @Autowired
+    protected HttpFactory httpFactory;
+    
+    @Autowired
+    protected SaltReturnHandlerRegistry returnHandlerRegistry;
 
     @Override
     public void executeNodeStep(PluginStepContext context, Map<String, Object> configuration, INodeEntry entry)
@@ -137,23 +140,32 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
             try {
                 String dispatchedJid = submitJob(context, client, authToken, entry.getNodename());
                 String jobOutput = waitForJidResponse(context, client, authToken, dispatchedJid, entry.getNodename());
-                context.getLogger().log(Constants.INFO_LEVEL, jobOutput);
+                SaltReturnHandler handler = returnHandlerRegistry.getHandlerFor(function.split(" ", 2)[0], defaultReturnHandler);
+                SaltReturnResponse response = handler.extractResponse(jobOutput);
+
+                for (String out : response.getStandardOutput()) {
+                    context.getLogger().log(Constants.INFO_LEVEL, out);
+                }
+                for (String err : response.getStandardError()) {
+                    context.getLogger().log(Constants.ERR_LEVEL, err);
+                }
+                if (!response.isSuccessful()) {
+                    throw new NodeStepException(String.format("Execution failed on minion with exit code %d",
+                            response.getExitCode()), SaltApiNodeStepFailureReason.EXIT_CODE, entry.getNodename());
+                }
+            } catch (SaltReturnResponseParseException e) {
+                throw new NodeStepException(e, SaltApiNodeStepFailureReason.SALT_API_FAILURE, entry.getNodename());
             } catch (InterruptedException e) {
-                throw new NodeStepException(e.getMessage(), SaltApiNodeStepFailureReason.INTERRUPTED,
-                        entry.getNodename());
+                throw new NodeStepException(e, SaltApiNodeStepFailureReason.INTERRUPTED, entry.getNodename());
             } catch (SaltTargettingMismatchException e) {
-                throw new NodeStepException(e.getMessage(), SaltApiNodeStepFailureReason.SALT_TARGET_MISMATCH,
-                        entry.getNodename());
-            } catch (SaltApiResponseException e) {
-                throw new NodeStepException(e.getMessage(), SaltApiNodeStepFailureReason.SALT_API_FAILURE,
-                        entry.getNodename());
+                throw new NodeStepException(e, SaltApiNodeStepFailureReason.SALT_TARGET_MISMATCH, entry.getNodename());
+            } catch (SaltApiException e) {
+                throw new NodeStepException(e, SaltApiNodeStepFailureReason.SALT_API_FAILURE, entry.getNodename());
             }
         } catch (HttpException e) {
-            throw new NodeStepException(e.getMessage(), SaltApiNodeStepFailureReason.COMMUNICATION_FAILURE,
-                    entry.getNodename());
+            throw new NodeStepException(e, SaltApiNodeStepFailureReason.COMMUNICATION_FAILURE, entry.getNodename());
         } catch (IOException e) {
-            throw new NodeStepException(e.getMessage(), SaltApiNodeStepFailureReason.COMMUNICATION_FAILURE,
-                    entry.getNodename());
+            throw new NodeStepException(e, SaltApiNodeStepFailureReason.COMMUNICATION_FAILURE, entry.getNodename());
         }
     }
 
@@ -165,7 +177,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
      *             if there was a communication failure with salt-api
      */
     protected String submitJob(PluginStepContext context, HttpClient client, String authToken, String minionId)
-            throws HttpException, IOException, SaltApiResponseException, SaltTargettingMismatchException {
+            throws HttpException, IOException, SaltApiException, SaltTargettingMismatchException {
         StringBuilder bodyString = new StringBuilder();
         List<String> args = ArgumentParser.DEFAULT_ARGUMENT_SPLITTER.parse(function);
         bodyString.append(SALT_API_FUNCTION_PARAM_NAME).append("=")
@@ -194,7 +206,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                 Gson gson = new Gson();
                 List<Map<String, Object>> responses = gson.fromJson(response, MINION_RESPONSE_TYPE);
                 if (responses.size() != 1) {
-                    throw new SaltApiResponseException(String.format("Could not understand salt response %s", response));
+                    throw new SaltApiException(String.format("Could not understand salt response %s", response));
                 }
                 Map<String, Object> responseMap = responses.get(0);
                 SaltApiResponseOutput saltOutput = gson.fromJson(responseMap.get(SALT_OUTPUT_RETURN_KEY).toString(),
@@ -232,7 +244,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     }
 
     protected String waitForJidResponse(PluginStepContext context, HttpClient client, String authToken, String jid,
-            String minionId) throws IOException, InterruptedException, SaltApiResponseException {
+            String minionId) throws IOException, InterruptedException, SaltApiException {
         do {
             String response = extractOutputForJid(context, client, authToken, jid, minionId);
             if (response != null) {
@@ -249,13 +261,13 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     /**
      * Extracts the minion job response by calling the job resource.
      * 
-     * @return the host response or null if none is available.
-     * @throws SaltApiResponseException
+     * @return the host response or null if none is available encoded in json.
+     * @throws SaltApiException
      *             if the salt-api response does not conform to the expected
      *             format.
      */
     protected String extractOutputForJid(PluginStepContext context, HttpClient client, String authToken, String jid,
-            String minionId) throws IOException, SaltApiResponseException {
+            String minionId) throws IOException, SaltApiException {
         String jidResource = String.format("%s%s/%s", saltEndpoint, JOBS_RESOURCE, jid);
         GetMethod method = httpFactory.createGetMethod(jidResource);
         try {
@@ -271,12 +283,12 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                 Map<String, List<Map<String, Object>>> result = gson.fromJson(response, JOB_RESPONSE_TYPE);
                 List<Map<String, Object>> responses = result.get(SALT_OUTPUT_RETURN_KEY);
                 if (responses.size() > 1) {
-                    throw new SaltApiResponseException("Too many responses received: " + response);
+                    throw new SaltApiException("Too many responses received: " + response);
                 } else if (responses.size() == 1) {
                     Map<String, Object> minionResponse = responses.get(0);
                     if (minionResponse.containsKey(minionId)) {
                         Object responseObj = minionResponse.get(minionId);
-                        return responseObj.toString();
+                        return gson.toJson(responseObj);
                     }
                 }
                 return null;

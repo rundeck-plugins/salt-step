@@ -32,10 +32,14 @@ import com.dtolabs.rundeck.core.common.INodeEntry;
 import com.dtolabs.rundeck.core.execution.workflow.steps.node.NodeStepException;
 import com.dtolabs.rundeck.plugins.PluginLogger;
 import com.dtolabs.rundeck.plugins.step.PluginStepContext;
-import com.salesforce.rundeck.plugin.SaltApiNodeStepPlugin.HttpFactory;
 import com.salesforce.rundeck.plugin.SaltApiNodeStepPlugin.SaltApiNodeStepFailureReason;
 import com.salesforce.rundeck.plugin.validation.SaltStepValidationException;
 import com.salesforce.rundeck.plugin.validation.Validators;
+import com.salesforce.rundeck.plugin.output.SaltReturnHandler;
+import com.salesforce.rundeck.plugin.output.SaltReturnHandlerRegistry;
+import com.salesforce.rundeck.plugin.output.SaltReturnResponse;
+import com.salesforce.rundeck.plugin.output.SaltReturnResponseParseException;
+import com.salesforce.rundeck.plugin.util.HttpFactory;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(Validators.class)
@@ -50,11 +54,11 @@ public class SaltApiNodeStepPluginTest {
     protected static final String MINIONS_ENDPOINT = PARAM_ENDPOINT + "/minions";
     protected static final String OUTPUT_JID = "20130213093536481553";
     protected static final String JOBS_ENDPOINT = PARAM_ENDPOINT + "/jobs/" + OUTPUT_JID;
-    protected static final String HOST_RESPONSE = "some response";
+    protected static final String HOST_RESPONSE = "\"some response\"";
     protected static final String MINION_JSON_RESPONSE = "[{\"return\": {\"jid\": \"" + OUTPUT_JID
             + "\", \"minions\": [\"" + PARAM_MINION_NAME + "\"]}}]";
-    protected static final String HOST_JSON_RESPONSE = "{\"return\":[{" + PARAM_MINION_NAME + ":\"" + HOST_RESPONSE
-            + "\"}]}";
+    protected static final String HOST_JSON_RESPONSE = "{\"return\":[{" + PARAM_MINION_NAME + ":" + HOST_RESPONSE
+            + "}]}";
 
     protected SaltApiNodeStepPlugin plugin;
     protected HttpClient client;
@@ -66,9 +70,13 @@ public class SaltApiNodeStepPluginTest {
     protected Map<String, Object> configuration;
     protected Map<String, Map<String, String>> dataContext;
     protected Map<String, String> optionContext;
+    protected SaltReturnHandlerRegistry returnHandlerRegistry;
+    protected SaltReturnHandler returnHandler;
 
     @Before
     public void setup() {
+        DependencyManagedNodeStepPlugin.CONFIG_FILE_LOCATION = "/beans-unittest.xml";
+
         plugin = new SaltApiNodeStepPlugin();
         plugin.saltEndpoint = PARAM_ENDPOINT;
         plugin.eAuth = PARAM_EAUTH;
@@ -76,6 +84,8 @@ public class SaltApiNodeStepPluginTest {
         client = Mockito.mock(HttpClient.class);
         postMethod = Mockito.mock(PostMethod.class);
         getMethod = Mockito.mock(GetMethod.class);
+
+        // Http dependencies
         plugin.httpFactory = new HttpFactory() {
             @Override
             public HttpClient createHttpClient() {
@@ -103,6 +113,14 @@ public class SaltApiNodeStepPluginTest {
             }
         };
 
+        // Return handler dependencies
+        returnHandlerRegistry = Mockito.mock(SaltReturnHandlerRegistry.class);
+        plugin.returnHandlerRegistry = returnHandlerRegistry;
+        returnHandler = Mockito.mock(SaltReturnHandler.class);
+        Mockito.when(returnHandlerRegistry.getHandlerFor(Mockito.anyString(), Mockito.any(SaltReturnHandler.class)))
+                .thenReturn(returnHandler);
+
+        // Setup execute method's arguments
         pluginContext = Mockito.mock(PluginStepContext.class);
         logger = Mockito.mock(PluginLogger.class);
         Mockito.when(pluginContext.getLogger()).thenReturn(logger);
@@ -113,7 +131,7 @@ public class SaltApiNodeStepPluginTest {
         dataContext = new HashMap<String, Map<String, String>>();
         optionContext = new HashMap<String, String>();
         optionContext.put(SaltApiNodeStepPlugin.SALT_USER_OPTION_NAME, PARAM_USER);
-        optionContext.put(SaltApiNodeStepPlugin.SALT_PASSWORD_OPTION_NAME, PARAM_PASSWORD);
+        optionContext.put(SaltApiNodeStepPlugin.SALT_PASSWORD_OPTION_NAME, PARAM_PASSWORD);     
         dataContext.put(SaltApiNodeStepPlugin.RUNDECK_DATA_CONTEXT_OPTION_KEY, optionContext);
         Mockito.when(pluginContext.getDataContext()).thenReturn(dataContext);
     }
@@ -262,7 +280,7 @@ public class SaltApiNodeStepPluginTest {
         try {
             plugin.submitJob(pluginContext, client, authToken, PARAM_MINION_NAME);
             Assert.fail("Expected salt-api response exception.");
-        } catch (SaltApiResponseException e) {
+        } catch (SaltApiException e) {
             // expected
         }
 
@@ -347,8 +365,7 @@ public class SaltApiNodeStepPluginTest {
         }
     }
 
-    @Test
-    public void testExecute() throws Exception {
+    public void testExecuteWithSuccessfulExitCode() throws Exception {
         String authToken = "some token";
         spyPlugin().setupAuthenticate(authToken).setValidationSuccessful();
 
@@ -362,9 +379,109 @@ public class SaltApiNodeStepPluginTest {
                 .waitForJidResponse(Mockito.same(pluginContext), Mockito.same(client), Mockito.eq(authToken),
                         Mockito.eq(OUTPUT_JID), Mockito.eq(PARAM_MINION_NAME));
 
+        SaltReturnResponse response = new SaltReturnResponse();
+        String output1 = "line 1 of output";
+        String output2 = "line 2 of output";
+        response.addOutput(output1);
+        response.addOutput(output2);
+        String error1 = "line 1 of error";
+        String error2 = "line 2 of error";
+        response.addError(error1);
+        response.addError(error2);
+        response.setExitCode(0);
+        Mockito.when(returnHandler.extractResponse(Mockito.anyString())).thenReturn(response);
+        
+        plugin.function += " arg1 arg2";
+
         plugin.executeNodeStep(pluginContext, configuration, node);
 
-        Mockito.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.INFO_LEVEL), Mockito.eq(HOST_RESPONSE));
+        Mockito.verify(returnHandlerRegistry, Mockito.times(1)).getHandlerFor(Mockito.eq(PARAM_FUNCTION),
+                Mockito.same(plugin.defaultReturnHandler));
+        Mockito.verify(returnHandler, Mockito.times(1)).extractResponse(Mockito.eq(HOST_RESPONSE));
+
+        Mockito.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.INFO_LEVEL), Mockito.eq(output1));
+        Mockito.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.INFO_LEVEL), Mockito.eq(output2));
+        Mockito.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.ERR_LEVEL), Mockito.eq(error1));
+        Mockito.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.ERR_LEVEL), Mockito.eq(error2));
+    }
+
+    @Test
+    public void testExecuteWithUnsuccessfulExitCode() throws Exception {
+        String authToken = "some token";
+        spyPlugin().setupAuthenticate(authToken);
+
+        Mockito.doReturn(OUTPUT_JID)
+                .when(plugin)
+                .submitJob(Mockito.same(pluginContext), Mockito.same(client), Mockito.eq(authToken),
+                        Mockito.eq(PARAM_MINION_NAME));
+
+        Mockito.doReturn(HOST_RESPONSE)
+                .when(plugin)
+                .waitForJidResponse(Mockito.same(pluginContext), Mockito.same(client), Mockito.eq(authToken),
+                        Mockito.eq(OUTPUT_JID), Mockito.eq(PARAM_MINION_NAME));
+
+        SaltReturnResponse response = new SaltReturnResponse();
+        String output1 = "line 1 of output";
+        String output2 = "line 2 of output";
+        response.addOutput(output1);
+        response.addOutput(output2);
+        String error1 = "line 1 of error";
+        String error2 = "line 2 of error";
+        response.addError(error1);
+        response.addError(error2);
+        response.setExitCode(1);
+        Mockito.when(returnHandler.extractResponse(Mockito.anyString())).thenReturn(response);
+
+        plugin.function += " arg1 arg2";
+        
+        try {
+            plugin.executeNodeStep(pluginContext, configuration, node);
+            Assert.fail("Expected failure due to exit code.");
+        } catch (NodeStepException e) {
+            Assert.assertEquals(SaltApiNodeStepFailureReason.EXIT_CODE, e.getFailureReason());
+        }
+
+        Mockito.verify(returnHandlerRegistry, Mockito.times(1)).getHandlerFor(Mockito.eq(PARAM_FUNCTION),
+                Mockito.same(plugin.defaultReturnHandler));
+        Mockito.verify(returnHandler, Mockito.times(1)).extractResponse(Mockito.eq(HOST_RESPONSE));
+
+        Mockito.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.INFO_LEVEL), Mockito.eq(output1));
+        Mockito.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.INFO_LEVEL), Mockito.eq(output2));
+        Mockito.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.ERR_LEVEL), Mockito.eq(error1));
+        Mockito.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.ERR_LEVEL), Mockito.eq(error2));
+    }
+    
+    @Test
+    public void testExecuteWithSaltResponseParseException() throws Exception {
+        String authToken = "some token";
+        spyPlugin().setupAuthenticate(authToken);
+
+        Mockito.doReturn(OUTPUT_JID)
+                .when(plugin)
+                .submitJob(Mockito.same(pluginContext), Mockito.same(client), Mockito.eq(authToken),
+                        Mockito.eq(PARAM_MINION_NAME));
+
+        Mockito.doReturn(HOST_RESPONSE)
+                .when(plugin)
+                .waitForJidResponse(Mockito.same(pluginContext), Mockito.same(client), Mockito.eq(authToken),
+                        Mockito.eq(OUTPUT_JID), Mockito.eq(PARAM_MINION_NAME));
+
+        SaltReturnResponseParseException pe = new SaltReturnResponseParseException("message");
+        Mockito.when(returnHandler.extractResponse(Mockito.anyString())).thenThrow(pe);
+
+        plugin.function += " arg1 arg2";
+        
+        try {
+            plugin.executeNodeStep(pluginContext, configuration, node);
+            Assert.fail("Expected failure due to response parse exception.");
+        } catch (NodeStepException e) {
+            Assert.assertEquals(SaltApiNodeStepFailureReason.SALT_API_FAILURE, e.getFailureReason());
+            Assert.assertSame(pe, e.getCause());
+        }
+
+        Mockito.verify(returnHandlerRegistry, Mockito.times(1)).getHandlerFor(Mockito.eq(PARAM_FUNCTION),
+                Mockito.same(plugin.defaultReturnHandler));
+        Mockito.verify(returnHandler, Mockito.times(1)).extractResponse(Mockito.eq(HOST_RESPONSE));
     }
 
     @Test
@@ -372,7 +489,7 @@ public class SaltApiNodeStepPluginTest {
         String authToken = "some token";
         spyPlugin().setupAuthenticate(authToken).setValidationSuccessful();
         String exceptionMessage = "some message";
-        Mockito.doThrow(new SaltApiResponseException(exceptionMessage))
+        Mockito.doThrow(new SaltApiException(exceptionMessage))
                 .when(plugin)
                 .submitJob(Mockito.same(pluginContext), Mockito.same(client), Mockito.eq(authToken),
                         Mockito.eq(PARAM_MINION_NAME));
@@ -530,7 +647,7 @@ public class SaltApiNodeStepPluginTest {
         String emptyHostResponse = "{\"return\":[{" + PARAM_MINION_NAME + ": \"\"}]}";
         setupResponse(getMethod, HttpStatus.SC_OK, emptyHostResponse);
 
-        Assert.assertEquals("",
+        Assert.assertEquals("\"\"",
                 plugin.extractOutputForJid(pluginContext, client, authToken, OUTPUT_JID, PARAM_MINION_NAME));
 
         Assert.assertEquals(JOBS_ENDPOINT, getMethod.getURI().toString());
@@ -568,7 +685,7 @@ public class SaltApiNodeStepPluginTest {
         try {
             plugin.extractOutputForJid(pluginContext, client, authToken, OUTPUT_JID, PARAM_MINION_NAME);
             Assert.fail("Expected exception for multiple responses.");
-        } catch (SaltApiResponseException e) {
+        } catch (SaltApiException e) {
             // expected
         }
 
