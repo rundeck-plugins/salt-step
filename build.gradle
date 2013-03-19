@@ -54,10 +54,12 @@ dependencies {
     )
     pluginCompile (
         'org.apache.commons:commons-exec:1.1',
-        'commons-httpclient:commons-httpclient:3.0.1',
         'com.google.code.gson:gson:2.2.2',
         'com.google.guava:guava:14.0'
     )
+    pluginCompile('commons-httpclient:commons-httpclient:3.0.1') {
+        exclude group: 'junit'
+    }
     testCompile (
         'junit:junit:4.8.2',
         'org.mockito:mockito-all:1.9.5'
