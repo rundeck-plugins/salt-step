@@ -14,11 +14,18 @@ on the same host as Rundeck is running or by executing the request over salt-api
 - Restart Rundeck
 - You should now have two additional "salt local" and "salt remote" options when configuring jobs
 
+##Configuration
+
+- Rundeck node resource IDs MUST match salt minion IDs
+
 ##Usage
 
 The following two job-level params should be configured to provide authentication input fields:
 - SALT_USER - standard input field, required.
 - SALT_PASSWORD - secure input field, required. *NOTE this should *not* be secure remote authentication*
+
+In addition:
+- Workflow configuration must be set to dispatch to nodes.
 
 ###Local execution on the salt master
 
