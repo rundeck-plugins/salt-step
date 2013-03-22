@@ -9,7 +9,7 @@ import org.mockito.Mockito;
 import com.dtolabs.rundeck.core.common.INodeEntry;
 import com.dtolabs.rundeck.core.execution.workflow.steps.FailureReason;
 import com.dtolabs.rundeck.core.execution.workflow.steps.node.NodeStepException;
-import com.salesforce.rundeck.plugin.SaltLocalNodeStepPlugin.SaltLocalNodeStepFailureReason;
+import com.salesforce.rundeck.plugin.SaltApiNodeStepPlugin.SaltApiNodeStepFailureReason;
 
 public class ValidatorsTest {
     protected String NODE_NAME = "node";
@@ -23,7 +23,7 @@ public class ValidatorsTest {
 
     @Test
     public void testCheckNotEmptyWithNullString() {
-        FailureReason reason = SaltLocalNodeStepFailureReason.ARGUMENTS_MISSING;
+        FailureReason reason = SaltApiNodeStepFailureReason.ARGUMENTS_MISSING;
         try {
             Validators.checkNotEmpty("some prop", null, reason, entry);
         } catch (NodeStepException e) {
@@ -34,7 +34,7 @@ public class ValidatorsTest {
 
     @Test
     public void testCheckNotEmptyWithEmptyString() {
-        FailureReason reason = SaltLocalNodeStepFailureReason.ARGUMENTS_MISSING;
+        FailureReason reason = SaltApiNodeStepFailureReason.ARGUMENTS_MISSING;
         try {
             Validators.checkNotEmpty("some prop", "", reason, entry);
         } catch (NodeStepException e) {
@@ -45,7 +45,7 @@ public class ValidatorsTest {
 
     @Test
     public void testCheckNotEmptyWithNonEmptyString() throws SaltStepValidationException {
-        FailureReason reason = SaltLocalNodeStepFailureReason.ARGUMENTS_MISSING;
+        FailureReason reason = SaltApiNodeStepFailureReason.ARGUMENTS_MISSING;
         Validators.checkNotEmpty("some prop", "value", reason, entry);
     }
 
