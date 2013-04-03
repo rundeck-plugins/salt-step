@@ -262,6 +262,33 @@ public class SaltApiNodeStepPluginTest {
 
         Mockito.verify(postMethod, Mockito.times(1)).releaseConnection();
     }
+    
+    @Test
+    public void testSubmitJobNoMinionsMatched() throws Exception {
+        String authToken = "some token";
+        String output = "[{\"return\": {}}]";
+        spyPlugin().setupAuthenticate(authToken).setupResponse(postMethod, HttpStatus.SC_ACCEPTED, output);
+
+        try {
+            plugin.submitJob(pluginContext, client, authToken, PARAM_MINION_NAME);
+            Assert.fail("Expected targetting mismatch exception.");
+        } catch (SaltTargettingMismatchException e) {
+            // expected
+        }
+
+        Assert.assertEquals(MINIONS_ENDPOINT, postMethod.getURI().toString());
+        String expectedBody = String.format("fun=%s&tgt=%s", PARAM_FUNCTION, PARAM_MINION_NAME);
+        assertPostBody(expectedBody);
+        Mockito.verify(postMethod, Mockito.times(1)).setRequestHeader(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER,
+                authToken);
+        Mockito.verify(postMethod, Mockito.times(1)).setRequestHeader(SaltApiNodeStepPlugin.REQUEST_ACCEPT_HEADER_NAME,
+                SaltApiNodeStepPlugin.JSON_RESPONSE_ACCEPT_TYPE);
+        Mockito.verify(client, Mockito.times(1)).executeMethod(Mockito.same(postMethod));
+
+        Mockito.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.DEBUG_LEVEL), Mockito.anyString());
+
+        Mockito.verify(postMethod, Mockito.times(1)).releaseConnection();
+    }
 
     @Test
     public void testSubmitJobMinionCountMismatch() throws Exception {

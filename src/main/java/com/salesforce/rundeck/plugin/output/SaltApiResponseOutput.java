@@ -15,6 +15,6 @@ public class SaltApiResponseOutput {
     }
 
     public List<String> getMinions() {
-        return Collections.unmodifiableList(minions);
+        return minions == null ? Collections.<String>emptyList() : Collections.unmodifiableList(minions);
     }
 }
