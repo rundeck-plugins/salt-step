@@ -322,8 +322,17 @@ public class SaltApiNodeStepPlugin extends DependencyManagedNodeStepPlugin {
             method.setRequestEntity(new StringRequestEntity(bodyString.toString(), REQUEST_CONTENT_TYPE,
                     CHAR_SET_ENCODING));
             client.executeMethod(method);
-
-            return method.getStatusCode() == HttpStatus.SC_MOVED_TEMPORARILY ? method.getResponseHeader(
+            
+            int responseCode = method.getStatusCode();
+            /**
+             * This commit changes the /login behaviour for salt-api
+             * https://github.com/saltstack/salt-api/commit/b57b416ece9f6b2b54765d346cce3f5699381003
+             */
+            return  
+                    // salt-api version <= 0.7.5 release response code
+                    responseCode == HttpStatus.SC_MOVED_TEMPORARILY ||
+                    // salt-api version > 0.7.5 release response code
+                    responseCode == HttpStatus.SC_OK ? method.getResponseHeader(
                     SALT_AUTH_TOKEN_HEADER).getValue() : null;
         } finally {
             method.releaseConnection();

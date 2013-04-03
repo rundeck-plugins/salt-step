@@ -137,9 +137,28 @@ public class SaltApiNodeStepPluginTest {
     }
 
     @Test
-    public void testAuthenticate() throws Exception {
+    public void testAuthenticateWithRedirectResponseCode() throws Exception {
         String authToken = "123qwe";
         setupResponseCode(postMethod, HttpStatus.SC_MOVED_TEMPORARILY);
+        Mockito.when(postMethod.getResponseHeader(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER)).thenReturn(
+                new Header(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER, authToken));
+
+        Assert.assertEquals(authToken, plugin.authenticate(client, PARAM_USER, PARAM_PASSWORD));
+
+        Assert.assertEquals(PARAM_ENDPOINT + "/login", postMethod.getURI().toString());
+        String expectedAuthString = String.format("username=%s&password=%s&eauth=%s",
+                URLEncoder.encode(PARAM_USER, SaltApiNodeStepPlugin.CHAR_SET_ENCODING),
+                URLEncoder.encode(PARAM_PASSWORD, SaltApiNodeStepPlugin.CHAR_SET_ENCODING), PARAM_EAUTH);
+        assertPostBody(expectedAuthString);
+        Mockito.verify(client, Mockito.times(1)).executeMethod(Mockito.same(postMethod));
+
+        Mockito.verify(postMethod, Mockito.times(1)).releaseConnection();
+    }
+    
+    @Test
+    public void testAuthenticateWithOkResponseCode() throws Exception {
+        String authToken = "123qwe";
+        setupResponseCode(postMethod, HttpStatus.SC_OK);
         Mockito.when(postMethod.getResponseHeader(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER)).thenReturn(
                 new Header(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER, authToken));
 
