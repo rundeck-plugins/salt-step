@@ -12,7 +12,7 @@ on the same host as Rundeck is running or by executing the request over salt-api
 - The resulting jar files can be found under build/libs. 
 - Copy the rundeck-salt-plugin-<version>.jar file to your $RDECK_BASE/libext folder
 - Restart Rundeck
-- You should now have two additional "salt local" and "salt remote" options when configuring jobs
+- You should now have an additional "salt remote" option when configuring jobs
 
 ##Configuration
 
