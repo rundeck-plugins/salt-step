@@ -1,9 +1,14 @@
 package com.salesforce.rundeck.plugin.output;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 /**
  * An implementation of SaltReturnHandler that returns an always successful exit code and
  * the raw response in standard out.
  */
+@Component
 public class DefaultSaltReturnHandler implements SaltReturnHandler {
     
     protected Integer exitCode;
@@ -12,7 +17,8 @@ public class DefaultSaltReturnHandler implements SaltReturnHandler {
         this(0);
     }
     
-    public DefaultSaltReturnHandler(Integer exitCode) {
+    @Autowired
+    public DefaultSaltReturnHandler(@Value("${defaultSaltReturner.exitCode}") Integer exitCode) {
         setExitCode(exitCode);
     }
     

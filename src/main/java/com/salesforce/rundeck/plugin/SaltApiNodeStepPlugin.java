@@ -16,7 +16,6 @@ import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.methods.StringRequestEntity;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import com.dtolabs.rundeck.core.Constants;
 import com.dtolabs.rundeck.core.common.INodeEntry;
@@ -29,15 +28,14 @@ import com.dtolabs.rundeck.plugins.descriptions.PluginProperty;
 import com.dtolabs.rundeck.plugins.step.PluginStepContext;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import com.salesforce.rundeck.plugin.util.ArgumentParser;
-import com.salesforce.rundeck.plugin.validation.SaltStepValidationException;
-import com.salesforce.rundeck.plugin.output.DefaultSaltReturnHandler;
 import com.salesforce.rundeck.plugin.output.SaltApiResponseOutput;
 import com.salesforce.rundeck.plugin.output.SaltReturnHandler;
 import com.salesforce.rundeck.plugin.output.SaltReturnHandlerRegistry;
 import com.salesforce.rundeck.plugin.output.SaltReturnResponse;
 import com.salesforce.rundeck.plugin.output.SaltReturnResponseParseException;
+import com.salesforce.rundeck.plugin.util.ArgumentParser;
 import com.salesforce.rundeck.plugin.util.HttpFactory;
+import com.salesforce.rundeck.plugin.validation.SaltStepValidationException;
 
 /**
  * This plugin allows salt execution on a specific minion using the salt-api
@@ -51,7 +49,6 @@ import com.salesforce.rundeck.plugin.util.HttpFactory;
  * <li>SALT_USER and SALT_PASSWORD options must be configured and provided on the job.</li>
  * </ul>
  */
-@Component
 @Plugin(name = SaltApiNodeStepPlugin.SERVICE_PROVIDER_NAME, service = ServiceNameConstants.WorkflowNodeStep)
 @PluginDescription(title = "Remote Salt Execution", description = "Run a command on a remote salt master through salt-api.")
 public class SaltApiNodeStepPlugin extends DependencyManagedNodeStepPlugin {

@@ -12,7 +12,7 @@ import javax.annotation.PostConstruct;
 
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.CustomClassLoaderConstructor;
@@ -21,8 +21,6 @@ import com.google.common.collect.Maps;
 
 @Component
 public class SaltReturnHandlerRegistry {
-
-    protected static final String DEFAULT_CONFIG_FILE = "/defaultReturners.yaml";
     protected static final String RETURN_HANDLER_CONFIGURATION_PROPERTY_KEY = "saltStep.returnHandlers";
     protected static final String RUNDECK_CONFIGURATION_LOCATION_KEY = "rundeck.config.location";
     protected static final String HANDLER_MAPPINGS_KEY = "handlerMappings";
@@ -36,7 +34,7 @@ public class SaltReturnHandlerRegistry {
     protected final String configurationFile;
 
     @Autowired
-    public SaltReturnHandlerRegistry(@Qualifier("returnerConfigurationFile") String configurationFile) {
+    public SaltReturnHandlerRegistry(@Value("${saltReturnerRegistry.defaultReturnerConfiguration}") String configurationFile) {
         this.configurationFile = configurationFile;
     }
 

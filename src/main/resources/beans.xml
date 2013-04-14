@@ -8,13 +8,5 @@
            http://www.springframework.org/schema/context/spring-context-3.0.xsd">
  
     <context:component-scan base-package="com.salesforce.rundeck.plugin" />
-    <context:annotation-config />
-    
-    <bean id="defaultReturnHandler" class="com.salesforce.rundeck.plugin.output.DefaultSaltReturnHandler">
-        <constructor-arg value="1"/>
-    </bean>
-    
-    <bean id="returnerConfigurationFile" class="java.lang.String">
-        <constructor-arg value="/defaultReturners.yaml"/>
-    </bean>     
+    <context:property-placeholder location="classpath:salt-api-plugin.properties" />     
 </beans>

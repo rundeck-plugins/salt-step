@@ -69,13 +69,14 @@ dependencies {
     )
 }
 
+def packagedJars = configurations.runtime.files.collect { "$it.name" }.join(" ")
 jar {
     manifest {
         attributes 'Rundeck-Plugin-Version': rundeckPluginVersion,
             'Rundeck-Plugin-Archive': 'true',
             'Rundeck-Plugin-File-Version': version,
-            'Rundeck-Plugin-Classnames': pluginClassNames
+            'Rundeck-Plugin-Classnames': pluginClassNames,
+            'Rundeck-Plugin-Libs': packagedJars
     }
-    from configurations.pluginCompile.collect { it.isDirectory() ? it : zipTree(it) }
-    from ('src/main/resources')
+    from configurations.pluginCompile
 }
