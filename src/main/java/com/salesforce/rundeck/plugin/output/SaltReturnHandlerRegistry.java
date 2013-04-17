@@ -19,6 +19,9 @@ import org.yaml.snakeyaml.constructor.CustomClassLoaderConstructor;
 
 import com.google.common.collect.Maps;
 
+/**
+ * A managed repository of return handlers for interpreting salt responses.
+ */
 @Component
 public class SaltReturnHandlerRegistry {
     protected static final String RETURN_HANDLER_CONFIGURATION_PROPERTY_KEY = "saltStep.returnHandlers";

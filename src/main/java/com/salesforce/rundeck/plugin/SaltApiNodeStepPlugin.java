@@ -25,6 +25,7 @@ import com.dtolabs.rundeck.core.plugins.Plugin;
 import com.dtolabs.rundeck.plugins.ServiceNameConstants;
 import com.dtolabs.rundeck.plugins.descriptions.PluginDescription;
 import com.dtolabs.rundeck.plugins.descriptions.PluginProperty;
+import com.dtolabs.rundeck.plugins.step.NodeStepPlugin;
 import com.dtolabs.rundeck.plugins.step.PluginStepContext;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -51,7 +52,7 @@ import com.salesforce.rundeck.plugin.validation.SaltStepValidationException;
  */
 @Plugin(name = SaltApiNodeStepPlugin.SERVICE_PROVIDER_NAME, service = ServiceNameConstants.WorkflowNodeStep)
 @PluginDescription(title = "Remote Salt Execution", description = "Run a command on a remote salt master through salt-api.")
-public class SaltApiNodeStepPlugin extends DependencyManagedNodeStepPlugin {
+public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     public enum SaltApiNodeStepFailureReason implements FailureReason {
         EXIT_CODE, ARGUMENTS_MISSING, ARGUMENTS_INVALID, AUTHENTICATION_FAILURE, COMMUNICATION_FAILURE, SALT_API_FAILURE, SALT_TARGET_MISMATCH, INTERRUPTED;
     }
@@ -111,6 +112,10 @@ public class SaltApiNodeStepPlugin extends DependencyManagedNodeStepPlugin {
     
     @Autowired
     protected SaltReturnHandlerRegistry returnHandlerRegistry;
+    
+    public SaltApiNodeStepPlugin() {
+        new DependencyInjectionUtil().inject(this);
+    }
 
     @Override
     public void executeNodeStep(PluginStepContext context, Map<String, Object> configuration, INodeEntry entry)

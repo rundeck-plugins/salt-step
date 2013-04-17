@@ -3,9 +3,10 @@ package com.salesforce.rundeck.plugin;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
-import com.dtolabs.rundeck.plugins.step.NodeStepPlugin;
-
-public abstract class DependencyManagedNodeStepPlugin implements NodeStepPlugin {
+/**
+ * DI support for salt NodeStepPlugins
+ */
+public class DependencyInjectionUtil {
 
     protected static String CONFIG_FILE_LOCATION = "/beans.xml";
 
@@ -13,10 +14,10 @@ public abstract class DependencyManagedNodeStepPlugin implements NodeStepPlugin 
 
     protected ApplicationContext getContext() {
         if (context == null) {
-            synchronized (DependencyManagedNodeStepPlugin.class) {
+            synchronized (DependencyInjectionUtil.class) {
                 if (context == null) {
                     context = new ClassPathXmlApplicationContext();
-                    context.setClassLoader(DependencyManagedNodeStepPlugin.class.getClassLoader());
+                    context.setClassLoader(DependencyInjectionUtil.class.getClassLoader());
                     context.setConfigLocation(CONFIG_FILE_LOCATION);
                     context.refresh();
                     context.registerShutdownHook();
@@ -26,7 +27,7 @@ public abstract class DependencyManagedNodeStepPlugin implements NodeStepPlugin 
         return context;
     }
 
-    public DependencyManagedNodeStepPlugin() {
-        getContext().getAutowireCapableBeanFactory().autowireBean(this);
+    public void inject(Object bean) {
+        getContext().getAutowireCapableBeanFactory().autowireBean(bean);
     }
 }

@@ -8,6 +8,10 @@ import org.apache.commons.lang.StringUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
+/**
+ * Utility for parsing argument strings respecting quotes and
+ * escape of quotes into individual strings.
+ */
 public class ArgumentParser {
 
     public static final ArgumentParser DEFAULT_ARGUMENT_SPLITTER = new ArgumentParser("\\s", new char[] { '\'', '"' },

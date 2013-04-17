@@ -75,8 +75,6 @@ public class SaltApiNodeStepPluginTest {
 
     @Before
     public void setup() {
-        DependencyManagedNodeStepPlugin.CONFIG_FILE_LOCATION = "/beans-unittest.xml";
-
         plugin = new SaltApiNodeStepPlugin();
         plugin.saltEndpoint = PARAM_ENDPOINT;
         plugin.eAuth = PARAM_EAUTH;
