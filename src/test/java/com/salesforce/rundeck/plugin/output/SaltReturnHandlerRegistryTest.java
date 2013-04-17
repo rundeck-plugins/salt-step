@@ -40,23 +40,28 @@ public class SaltReturnHandlerRegistryTest {
         rundeckConfigurationFile.deleteOnExit();
         System.setProperty(SaltReturnHandlerRegistry.RUNDECK_CONFIGURATION_LOCATION_KEY,
                 rundeckConfigurationFile.getAbsolutePath());
-        BufferedWriter writer = new BufferedWriter(new FileWriter(rundeckConfigurationFile));
         try {
-            writer.append(String.format("%s=%s,%s",
-                    SaltReturnHandlerRegistry.RETURN_HANDLER_CONFIGURATION_PROPERTY_KEY, extraConfigurationFile1,
-                    extraConfigurationFile2));
+            BufferedWriter writer = new BufferedWriter(new FileWriter(rundeckConfigurationFile));
+            try {
+                writer.append(String.format("%s=%s,%s",
+                        SaltReturnHandlerRegistry.RETURN_HANDLER_CONFIGURATION_PROPERTY_KEY, extraConfigurationFile1,
+                        extraConfigurationFile2));
+            } finally {
+                writer.close();
+            }
+            Mockito.doNothing().when(registry).configureFromFile(Mockito.anyString());
+
+            registry.configure();
+
+            Mockito.verify(registry, Mockito.times(1)).configure();
+            Mockito.verify(registry, Mockito.times(1)).configureFromResource(Mockito.eq(configurationFile));
+            Mockito.verify(registry, Mockito.times(1)).configureFromFile(Mockito.eq(extraConfigurationFile1));
+            Mockito.verify(registry, Mockito.times(1)).configureFromFile(Mockito.eq(extraConfigurationFile2));
+            Mockito.verifyNoMoreInteractions(registry);
         } finally {
-            writer.close();
+            // Unset the system property or else subsequent tests will try to configure using these keys.
+            System.clearProperty(SaltReturnHandlerRegistry.RUNDECK_CONFIGURATION_LOCATION_KEY);
         }
-        Mockito.doNothing().when(registry).configureFromFile(Mockito.anyString());
-
-        registry.configure();
-
-        Mockito.verify(registry, Mockito.times(1)).configure();
-        Mockito.verify(registry, Mockito.times(1)).configureFromResource(Mockito.eq(configurationFile));
-        Mockito.verify(registry, Mockito.times(1)).configureFromFile(Mockito.eq(extraConfigurationFile1));
-        Mockito.verify(registry, Mockito.times(1)).configureFromFile(Mockito.eq(extraConfigurationFile2));
-        Mockito.verifyNoMoreInteractions(registry);
     }
 
     @Test
