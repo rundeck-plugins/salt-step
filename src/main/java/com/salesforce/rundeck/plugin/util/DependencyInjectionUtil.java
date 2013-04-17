@@ -1,4 +1,4 @@
-package com.salesforce.rundeck.plugin;
+package com.salesforce.rundeck.plugin.util;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;

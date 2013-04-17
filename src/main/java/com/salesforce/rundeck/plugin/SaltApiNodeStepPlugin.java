@@ -35,6 +35,7 @@ import com.salesforce.rundeck.plugin.output.SaltReturnHandlerRegistry;
 import com.salesforce.rundeck.plugin.output.SaltReturnResponse;
 import com.salesforce.rundeck.plugin.output.SaltReturnResponseParseException;
 import com.salesforce.rundeck.plugin.util.ArgumentParser;
+import com.salesforce.rundeck.plugin.util.DependencyInjectionUtil;
 import com.salesforce.rundeck.plugin.util.HttpFactory;
 import com.salesforce.rundeck.plugin.validation.SaltStepValidationException;
 
