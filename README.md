@@ -43,6 +43,7 @@ The remote execution salt plugin provides three properties which need to be conf
 
 - Make sure that your salt-api setup is fully functional before attempting to execute jobs with this plugin
 - Setting the job output level to debug will print out the raw JSON commands that are being sent as well as the returned output
+- Make sure the API endpoint is correct, renmember to check http vs https
 
 ##Setting up salt return response parsers
 ===================
