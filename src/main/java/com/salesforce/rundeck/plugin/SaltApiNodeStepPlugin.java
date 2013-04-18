@@ -4,17 +4,21 @@ import static com.salesforce.rundeck.plugin.validation.Validators.checkNotEmpty;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.net.URLEncoder;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpException;
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.methods.GetMethod;
-import org.apache.commons.httpclient.methods.PostMethod;
-import org.apache.commons.httpclient.methods.StringRequestEntity;
 import org.apache.commons.validator.routines.UrlValidator;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpException;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.dtolabs.rundeck.core.Constants;
@@ -27,6 +31,7 @@ import com.dtolabs.rundeck.plugins.descriptions.PluginDescription;
 import com.dtolabs.rundeck.plugins.descriptions.PluginProperty;
 import com.dtolabs.rundeck.plugins.step.NodeStepPlugin;
 import com.dtolabs.rundeck.plugins.step.PluginStepContext;
+import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.salesforce.rundeck.plugin.output.SaltApiResponseOutput;
@@ -104,16 +109,16 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     @PluginProperty(title = SALT_API_EAUTH_OPTION_NAME, description = "Salt Master's external authentication system", required = true, defaultValue = "${option."
             + SALT_API_EAUTH_OPTION_NAME + "}")
     protected String eAuth;
-    
+
     @Autowired
     protected SaltReturnHandler defaultReturnHandler;
 
     @Autowired
     protected HttpFactory httpFactory;
-    
+
     @Autowired
     protected SaltReturnHandlerRegistry returnHandlerRegistry;
-    
+
     public SaltApiNodeStepPlugin() {
         new DependencyInjectionUtil().inject(this);
     }
@@ -140,31 +145,30 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                         SaltApiNodeStepFailureReason.AUTHENTICATION_FAILURE, entry.getNodename());
             }
 
-            try {
-                String dispatchedJid = submitJob(context, client, authToken, entry.getNodename());
-                String jobOutput = waitForJidResponse(context, client, authToken, dispatchedJid, entry.getNodename());
-                SaltReturnHandler handler = returnHandlerRegistry.getHandlerFor(function.split(" ", 2)[0], defaultReturnHandler);
-                SaltReturnResponse response = handler.extractResponse(jobOutput);
+            String dispatchedJid = submitJob(context, client, authToken, entry.getNodename());
+            String jobOutput = waitForJidResponse(context, client, authToken, dispatchedJid, entry.getNodename());
+            SaltReturnHandler handler = returnHandlerRegistry.getHandlerFor(function.split(" ", 2)[0],
+                    defaultReturnHandler);
+            SaltReturnResponse response = handler.extractResponse(jobOutput);
 
-                for (String out : response.getStandardOutput()) {
-                    context.getLogger().log(Constants.INFO_LEVEL, out);
-                }
-                for (String err : response.getStandardError()) {
-                    context.getLogger().log(Constants.ERR_LEVEL, err);
-                }
-                if (!response.isSuccessful()) {
-                    throw new NodeStepException(String.format("Execution failed on minion with exit code %d",
-                            response.getExitCode()), SaltApiNodeStepFailureReason.EXIT_CODE, entry.getNodename());
-                }
-            } catch (SaltReturnResponseParseException e) {
-                throw new NodeStepException(e, SaltApiNodeStepFailureReason.SALT_API_FAILURE, entry.getNodename());
-            } catch (InterruptedException e) {
-                throw new NodeStepException(e, SaltApiNodeStepFailureReason.INTERRUPTED, entry.getNodename());
-            } catch (SaltTargettingMismatchException e) {
-                throw new NodeStepException(e, SaltApiNodeStepFailureReason.SALT_TARGET_MISMATCH, entry.getNodename());
-            } catch (SaltApiException e) {
-                throw new NodeStepException(e, SaltApiNodeStepFailureReason.SALT_API_FAILURE, entry.getNodename());
+            for (String out : response.getStandardOutput()) {
+                context.getLogger().log(Constants.INFO_LEVEL, out);
             }
+            for (String err : response.getStandardError()) {
+                context.getLogger().log(Constants.ERR_LEVEL, err);
+            }
+            if (!response.isSuccessful()) {
+                throw new NodeStepException(String.format("Execution failed on minion with exit code %d",
+                        response.getExitCode()), SaltApiNodeStepFailureReason.EXIT_CODE, entry.getNodename());
+            }
+        } catch (SaltReturnResponseParseException e) {
+            throw new NodeStepException(e, SaltApiNodeStepFailureReason.SALT_API_FAILURE, entry.getNodename());
+        } catch (InterruptedException e) {
+            throw new NodeStepException(e, SaltApiNodeStepFailureReason.INTERRUPTED, entry.getNodename());
+        } catch (SaltTargettingMismatchException e) {
+            throw new NodeStepException(e, SaltApiNodeStepFailureReason.SALT_TARGET_MISMATCH, entry.getNodename());
+        } catch (SaltApiException e) {
+            throw new NodeStepException(e, SaltApiNodeStepFailureReason.SALT_API_FAILURE, entry.getNodename());
         } catch (HttpException e) {
             throw new NodeStepException(e, SaltApiNodeStepFailureReason.COMMUNICATION_FAILURE, entry.getNodename());
         } catch (IOException e) {
@@ -181,33 +185,36 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
      */
     protected String submitJob(PluginStepContext context, HttpClient client, String authToken, String minionId)
             throws HttpException, IOException, SaltApiException, SaltTargettingMismatchException {
-        StringBuilder bodyString = new StringBuilder();
+        List<NameValuePair> params = Lists.newArrayList();
         List<String> args = ArgumentParser.DEFAULT_ARGUMENT_SPLITTER.parse(function);
-        bodyString.append(SALT_API_FUNCTION_PARAM_NAME).append("=")
-                .append(URLEncoder.encode(args.get(0), CHAR_SET_ENCODING)).append("&")
-                .append(SALT_API_TARGET_PARAM_NAME).append("=").append(URLEncoder.encode(minionId, CHAR_SET_ENCODING));
+        params.add(new BasicNameValuePair(SALT_API_FUNCTION_PARAM_NAME, args.get(0)));
+        params.add(new BasicNameValuePair(SALT_API_TARGET_PARAM_NAME, minionId));
         for (int i = 1; i < args.size(); i++) {
-            bodyString.append("&").append(SALT_API_ARGUMENTS_PARAM_NAME).append("=")
-                    .append(URLEncoder.encode(args.get(i), CHAR_SET_ENCODING));
+            params.add(new BasicNameValuePair(SALT_API_ARGUMENTS_PARAM_NAME, args.get(i)));
         }
+        UrlEncodedFormEntity postEntity = new UrlEncodedFormEntity(params, CHAR_SET_ENCODING);
+        postEntity.setContentEncoding(CHAR_SET_ENCODING);
+        postEntity.setContentType(REQUEST_CONTENT_TYPE);
 
-        PostMethod post = httpFactory.createPostMethod(saltEndpoint + MINION_RESOURCE);
+        HttpPost post = httpFactory.createHttpPost(saltEndpoint + MINION_RESOURCE);
+        post.setHeader(SALT_AUTH_TOKEN_HEADER, authToken);
+        post.setHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
+        post.setEntity(postEntity);
+        HttpResponse response = client.execute(post);
+
+        int statusCode = response.getStatusLine().getStatusCode();
+        HttpEntity entity = response.getEntity();
         try {
-            post.setRequestHeader(SALT_AUTH_TOKEN_HEADER, authToken);
-            post.setRequestHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
-            post.setRequestEntity(new StringRequestEntity(bodyString.toString(), REQUEST_CONTENT_TYPE,
-                    CHAR_SET_ENCODING));
-            client.executeMethod(post);
+            String entityResponse = EntityUtils.toString(entity);
+            if (statusCode != HttpStatus.SC_ACCEPTED) {
 
-            if (post.getStatusCode() != HttpStatus.SC_ACCEPTED) {
                 throw new HttpException(String.format("Expected response code %d, received %d. %s",
-                        HttpStatus.SC_ACCEPTED, post.getStatusCode(), post.getResponseBodyAsString()));
+                        HttpStatus.SC_ACCEPTED, statusCode, entityResponse));
             } else {
-                String response = post.getResponseBodyAsString();
                 context.getLogger().log(Constants.DEBUG_LEVEL,
                         String.format("Received response for job submission = %s", response));
                 Gson gson = new Gson();
-                List<Map<String, Object>> responses = gson.fromJson(response, MINION_RESPONSE_TYPE);
+                List<Map<String, Object>> responses = gson.fromJson(entityResponse, MINION_RESPONSE_TYPE);
                 if (responses.size() != 1) {
                     throw new SaltApiException(String.format("Could not understand salt response %s", response));
                 }
@@ -226,6 +233,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                 return saltOutput.getJid();
             }
         } finally {
+            EntityUtils.consumeQuietly(entity);
             post.releaseConnection();
         }
     }
@@ -272,18 +280,19 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     protected String extractOutputForJid(PluginStepContext context, HttpClient client, String authToken, String jid,
             String minionId) throws IOException, SaltApiException {
         String jidResource = String.format("%s%s/%s", saltEndpoint, JOBS_RESOURCE, jid);
-        GetMethod method = httpFactory.createGetMethod(jidResource);
-        try {
-            method.setRequestHeader(SALT_AUTH_TOKEN_HEADER, authToken);
-            method.setRequestHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
-            client.executeMethod(method);
+        HttpGet get = httpFactory.createHttpGet(jidResource);
+        get.setHeader(SALT_AUTH_TOKEN_HEADER, authToken);
+        get.setHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
+        HttpResponse response = client.execute(get);
 
-            if (method.getStatusCode() == HttpStatus.SC_OK) {
-                String response = method.getResponseBodyAsString();
+        try {
+            if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
+                HttpEntity entity = response.getEntity();
+                String entityResponse = EntityUtils.toString(entity);
                 context.getLogger().log(Constants.DEBUG_LEVEL,
                         String.format("Received response for jobs/%s = %s", jid, response));
                 Gson gson = new Gson();
-                Map<String, List<Map<String, Object>>> result = gson.fromJson(response, JOB_RESPONSE_TYPE);
+                Map<String, List<Map<String, Object>>> result = gson.fromJson(entityResponse, JOB_RESPONSE_TYPE);
                 List<Map<String, Object>> responses = result.get(SALT_OUTPUT_RETURN_KEY);
                 if (responses.size() > 1) {
                     throw new SaltApiException("Too many responses received: " + response);
@@ -299,7 +308,8 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                 return null;
             }
         } finally {
-            method.releaseConnection();
+            EntityUtils.consumeQuietly(response.getEntity());
+            get.releaseConnection();
         }
     }
 
@@ -314,31 +324,32 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
      * @return X-Auth-Token for use in subsequent requests
      */
     protected String authenticate(HttpClient client, String user, String password) throws IOException {
-        StringBuilder bodyString = new StringBuilder();
-        bodyString.append(SALT_API_USERNAME_PARAM_NAME).append("=").append(URLEncoder.encode(user, CHAR_SET_ENCODING))
-                .append("&").append(SALT_API_PASSWORD_PARAM_NAME).append("=")
-                .append(URLEncoder.encode(password, CHAR_SET_ENCODING)).append("&").append(SALT_API_EAUTH_PARAM_NAME)
-                .append("=").append(eAuth);
+        List<NameValuePair> params = Lists.newArrayListWithCapacity(3);
+        params.add(new BasicNameValuePair(SALT_API_USERNAME_PARAM_NAME, user));
+        params.add(new BasicNameValuePair(SALT_API_PASSWORD_PARAM_NAME, password));
+        params.add(new BasicNameValuePair(SALT_API_EAUTH_PARAM_NAME, eAuth));
+        UrlEncodedFormEntity postEntity = new UrlEncodedFormEntity(params, CHAR_SET_ENCODING);
+        postEntity.setContentEncoding(CHAR_SET_ENCODING);
+        postEntity.setContentType(REQUEST_CONTENT_TYPE);
 
-        PostMethod method = httpFactory.createPostMethod(saltEndpoint + LOGIN_RESOURCE);
+        HttpPost post = httpFactory.createHttpPost(saltEndpoint + LOGIN_RESOURCE);
+        post.setEntity(postEntity);
+        HttpResponse response = client.execute(post);
+
         try {
-            method.setRequestEntity(new StringRequestEntity(bodyString.toString(), REQUEST_CONTENT_TYPE,
-                    CHAR_SET_ENCODING));
-            client.executeMethod(method);
-            
-            int responseCode = method.getStatusCode();
+            int responseCode = response.getStatusLine().getStatusCode();
             /**
              * This commit changes the /login behaviour for salt-api
              * https://github.com/saltstack/salt-api/commit/b57b416ece9f6b2b54765d346cce3f5699381003
              */
-            return  
-                    // salt-api version <= 0.7.5 release response code
-                    responseCode == HttpStatus.SC_MOVED_TEMPORARILY ||
-                    // salt-api version > 0.7.5 release response code
-                    responseCode == HttpStatus.SC_OK ? method.getResponseHeader(
-                    SALT_AUTH_TOKEN_HEADER).getValue() : null;
+            return
+            // salt-api version <= 0.7.5 release response code
+            responseCode == HttpStatus.SC_MOVED_TEMPORARILY ||
+            // salt-api version > 0.7.5 release response code
+                    responseCode == HttpStatus.SC_OK ? response.getHeaders(SALT_AUTH_TOKEN_HEADER)[0].getValue() : null;
         } finally {
-            method.releaseConnection();
+            EntityUtils.consumeQuietly(response.getEntity());
+            post.releaseConnection();
         }
     }
 }

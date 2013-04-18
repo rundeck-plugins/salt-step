@@ -2,7 +2,7 @@ package com.salesforce.rundeck.plugin;
 
 import junit.framework.Assert;
 
-import org.apache.commons.httpclient.HttpException;
+import org.apache.http.HttpException;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -33,7 +33,7 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
             Assert.assertEquals(SaltApiNodeStepFailureReason.AUTHENTICATION_FAILURE, e.getFailureReason());
         }
 
-        Mockito.verifyZeroInteractions(client, postMethod);
+        Mockito.verifyZeroInteractions(client, post);
     }
 
     @Test

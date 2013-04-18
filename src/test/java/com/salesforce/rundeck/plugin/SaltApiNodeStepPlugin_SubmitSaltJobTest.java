@@ -2,11 +2,13 @@ package com.salesforce.rundeck.plugin;
 
 import junit.framework.Assert;
 
-import org.apache.commons.httpclient.HttpException;
-import org.apache.commons.httpclient.HttpStatus;
+import org.apache.http.HttpException;
+import org.apache.http.HttpStatus;
+import org.apache.http.util.EntityUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.powermock.api.mockito.PowerMockito;
 
 public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNodeStepPluginTest {
 
@@ -20,7 +22,7 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
 
     @Test
     public void testSubmitJob() throws Exception {
-        setupResponse(postMethod, HttpStatus.SC_ACCEPTED, MINION_JSON_RESPONSE);
+        setupResponse(post, HttpStatus.SC_ACCEPTED, MINION_JSON_RESPONSE);
 
         Assert.assertEquals(OUTPUT_JID, plugin.submitJob(pluginContext, client, AUTH_TOKEN, PARAM_MINION_NAME));
 
@@ -29,7 +31,7 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
 
     @Test
     public void testSubmitJobWithArgs() throws Exception {
-        setupResponse(postMethod, HttpStatus.SC_ACCEPTED, MINION_JSON_RESPONSE);
+        setupResponse(post, HttpStatus.SC_ACCEPTED, MINION_JSON_RESPONSE);
 
         String arg1 = "sdf%33&";
         String arg2 = "adsf asdf";
@@ -42,7 +44,7 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
 
     @Test
     public void testSubmitJobResponseCodeError() throws Exception {
-        setupResponse(postMethod, HttpStatus.SC_TEMPORARY_REDIRECT, MINION_JSON_RESPONSE);
+        setupResponse(post, HttpStatus.SC_TEMPORARY_REDIRECT, MINION_JSON_RESPONSE);
 
         try {
             plugin.submitJob(pluginContext, client, AUTH_TOKEN, PARAM_MINION_NAME);
@@ -57,7 +59,7 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
     @Test
     public void testSubmitJobNoMinionsMatched() throws Exception {
         String output = "[{\"return\": {}}]";
-        setupResponse(postMethod, HttpStatus.SC_ACCEPTED, output);
+        setupResponse(post, HttpStatus.SC_ACCEPTED, output);
 
         try {
             plugin.submitJob(pluginContext, client, AUTH_TOKEN, PARAM_MINION_NAME);
@@ -72,7 +74,7 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
     @Test
     public void testSubmitJobMinionCountMismatch() throws Exception {
         String output = String.format("[{\"return\": {\"jid\": \"%s\", \"minions\": []}}]", OUTPUT_JID);
-        setupResponse(postMethod, HttpStatus.SC_ACCEPTED, output);
+        setupResponse(post, HttpStatus.SC_ACCEPTED, output);
 
         try {
             plugin.submitJob(pluginContext, client, AUTH_TOKEN, PARAM_MINION_NAME);
@@ -87,7 +89,7 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
     @Test
     public void testSubmitJobMultipleResponses() throws Exception {
         String output = String.format("[{\"return\": {\"jid\": \"%s\", \"minions\": [\"SomeOtherMinion\"]}},{}]", OUTPUT_JID);
-        setupResponse(postMethod, HttpStatus.SC_ACCEPTED, output);
+        setupResponse(post, HttpStatus.SC_ACCEPTED, output);
 
         try {
             plugin.submitJob(pluginContext, client, AUTH_TOKEN, PARAM_MINION_NAME);
@@ -102,7 +104,7 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
     @Test
     public void testSubmitJobMinionIdMismatch() throws Exception {
         String output = String.format("[{\"return\": {\"jid\": \"%s\", \"minions\": [\"SomeOtherMinion\"]}}]", OUTPUT_JID);
-        setupResponse(postMethod, HttpStatus.SC_ACCEPTED, output);
+        setupResponse(post, HttpStatus.SC_ACCEPTED, output);
 
         try {
             plugin.submitJob(pluginContext, client, AUTH_TOKEN, PARAM_MINION_NAME);
@@ -119,13 +121,16 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
     }
 
     protected void assertThatSubmitSaltJobAttemptedSuccessfully(String template, String... args) throws Exception {
-        Assert.assertEquals(MINIONS_ENDPOINT, postMethod.getURI().toString());
+        Assert.assertEquals(MINIONS_ENDPOINT, post.getURI().toString());
         assertPostBody(template, args);
-        Mockito.verify(postMethod, Mockito.times(1)).setRequestHeader(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER,
+        Mockito.verify(post, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER,
                 AUTH_TOKEN);
-        Mockito.verify(postMethod, Mockito.times(1)).setRequestHeader(SaltApiNodeStepPlugin.REQUEST_ACCEPT_HEADER_NAME,
+        Mockito.verify(post, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.REQUEST_ACCEPT_HEADER_NAME,
                 SaltApiNodeStepPlugin.JSON_RESPONSE_ACCEPT_TYPE);
-        Mockito.verify(client, Mockito.times(1)).executeMethod(Mockito.same(postMethod));
-        Mockito.verify(postMethod, Mockito.times(1)).releaseConnection();
+        Mockito.verify(client, Mockito.times(1)).execute(Mockito.same(post));
+        
+        PowerMockito.verifyStatic(Mockito.times(1));
+        EntityUtils.consumeQuietly(Mockito.same(responseEntity));
+        Mockito.verify(post, Mockito.times(1)).releaseConnection();
     }
 }

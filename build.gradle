@@ -46,21 +46,21 @@ configurations {
     compile {
         extendsFrom pluginCompile
     }
+    compile.exclude module: 'commons-httpclient'
 }
 
 dependencies {
     compile (
         'org.rundeck:rundeck-core:1.5+'
-    )
+    ) 
     pluginCompile (
         'com.google.code.gson:gson:2.2.2',
         'com.google.guava:guava:14.0',
         'commons-validator:commons-validator:1.4.0',
-        'org.springframework:spring-context:3.2.2.RELEASE'
+        'org.springframework:spring-context:3.2.2.RELEASE',
+        'org.apache.httpcomponents:httpclient:4.2.3',
+        'org.apache.commons:commons-io:1.3.2'
     )
-    pluginCompile('commons-httpclient:commons-httpclient:3.0.1') {
-        exclude group: 'junit'
-    }
     testCompile (
         'junit:junit:4.8.2',
         'org.mockito:mockito-all:1.9.5',
