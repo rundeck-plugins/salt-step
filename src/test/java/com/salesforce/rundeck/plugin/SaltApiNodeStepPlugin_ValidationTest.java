@@ -3,15 +3,18 @@ package com.salesforce.rundeck.plugin;
 import junit.framework.Assert;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.dtolabs.rundeck.core.execution.workflow.steps.node.NodeStepException;
 import com.salesforce.rundeck.plugin.SaltApiNodeStepPlugin.SaltApiNodeStepFailureReason;
 import com.salesforce.rundeck.plugin.validation.SaltStepValidationException;
 import com.salesforce.rundeck.plugin.validation.Validators;
 
+@RunWith(PowerMockRunner.class)
 @PrepareForTest(Validators.class)
 public class SaltApiNodeStepPlugin_ValidationTest extends AbstractSaltApiNodeStepPluginTest {
     

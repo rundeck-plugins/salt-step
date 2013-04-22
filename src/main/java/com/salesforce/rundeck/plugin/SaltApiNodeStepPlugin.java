@@ -7,12 +7,14 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
+import org.apache.http.ParseException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
@@ -43,6 +45,8 @@ import com.salesforce.rundeck.plugin.util.ArgumentParser;
 import com.salesforce.rundeck.plugin.util.DependencyInjectionUtil;
 import com.salesforce.rundeck.plugin.util.HttpFactory;
 import com.salesforce.rundeck.plugin.validation.SaltStepValidationException;
+import com.salesforce.rundeck.plugin.version.SaltApiCapability;
+import com.salesforce.rundeck.plugin.version.SaltApiVersionCapabilityRegistry;
 
 /**
  * This plugin allows salt execution on a specific minion using the salt-api
@@ -92,6 +96,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     // -- Option names expected to be passed in from rundeck --
     protected static final String RUNDECK_DATA_CONTEXT_OPTION_KEY = "option";
     protected static final String SALT_API_END_POINT_OPTION_NAME = "SALT_API_END_POINT";
+    protected static final String SALT_API_VERSION_OPTION_NAME = "SALT_API_VERSION";
     protected static final String SALT_API_FUNCTION_OPTION_NAME = "Function";
     protected static final String SALT_API_EAUTH_OPTION_NAME = "SALT_API_EAUTH";
     protected static final String SALT_USER_OPTION_NAME = "SALT_USER";
@@ -103,12 +108,18 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
             + SALT_API_END_POINT_OPTION_NAME + "}")
     protected String saltEndpoint;
 
+    @PluginProperty(title = SALT_API_VERSION_OPTION_NAME, description = "Salt Api version", required = false)
+    protected String saltApiVersion;
+
     @PluginProperty(title = SALT_API_FUNCTION_OPTION_NAME, description = "Function (including args) to invoke on salt minions", required = true)
     protected String function;
 
     @PluginProperty(title = SALT_API_EAUTH_OPTION_NAME, description = "Salt Master's external authentication system", required = true, defaultValue = "${option."
             + SALT_API_EAUTH_OPTION_NAME + "}")
     protected String eAuth;
+
+    @Autowired
+    protected SaltApiVersionCapabilityRegistry capabilityRegistry;
 
     @Autowired
     protected SaltReturnHandler defaultReturnHandler;
@@ -137,8 +148,9 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         validate(user, password, entry);
 
         try {
+            SaltApiCapability capability = getSaltApiCapability();
             HttpClient client = httpFactory.createHttpClient();
-            String authToken = authenticate(client, user, password);
+            String authToken = authenticate(capability, client, user, password);
 
             if (authToken == null) {
                 throw new NodeStepException("Authentication failure",
@@ -205,7 +217,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         int statusCode = response.getStatusLine().getStatusCode();
         HttpEntity entity = response.getEntity();
         try {
-            String entityResponse = EntityUtils.toString(entity);
+            String entityResponse = extractBodyFromEntity(entity);
             if (statusCode != HttpStatus.SC_ACCEPTED) {
 
                 throw new HttpException(String.format("Expected response code %d, received %d. %s",
@@ -233,7 +245,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                 return saltOutput.getJid();
             }
         } finally {
-            EntityUtils.consumeQuietly(entity);
+            closeResource(entity);
             post.releaseConnection();
         }
     }
@@ -288,7 +300,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         try {
             if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
                 HttpEntity entity = response.getEntity();
-                String entityResponse = EntityUtils.toString(entity);
+                String entityResponse = extractBodyFromEntity(entity);
                 context.getLogger().log(Constants.DEBUG_LEVEL,
                         String.format("Received response for jobs/%s = %s", jid, response));
                 Gson gson = new Gson();
@@ -308,7 +320,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                 return null;
             }
         } finally {
-            EntityUtils.consumeQuietly(response.getEntity());
+            closeResource(response.getEntity());
             get.releaseConnection();
         }
     }
@@ -317,13 +329,16 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
      * Authenticates the given username/password with the given eauth system
      * against the salt-api endpoint
      * 
+     * @param capability
+     *            The {@link SaltApiCapability} that describes the supported features of the saltEndpoint
      * @param user
      *            The user to auth with
      * @param password
      *            The password for the given user
      * @return X-Auth-Token for use in subsequent requests
      */
-    protected String authenticate(HttpClient client, String user, String password) throws IOException {
+    protected String authenticate(SaltApiCapability capability, HttpClient client, String user, String password)
+            throws IOException, HttpException {
         List<NameValuePair> params = Lists.newArrayListWithCapacity(3);
         params.add(new BasicNameValuePair(SALT_API_USERNAME_PARAM_NAME, user));
         params.add(new BasicNameValuePair(SALT_API_PASSWORD_PARAM_NAME, password));
@@ -338,18 +353,31 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
 
         try {
             int responseCode = response.getStatusLine().getStatusCode();
-            /**
-             * This commit changes the /login behaviour for salt-api
-             * https://github.com/saltstack/salt-api/commit/b57b416ece9f6b2b54765d346cce3f5699381003
-             */
-            return
-            // salt-api version <= 0.7.5 release response code
-            responseCode == HttpStatus.SC_MOVED_TEMPORARILY ||
-            // salt-api version > 0.7.5 release response code
-                    responseCode == HttpStatus.SC_OK ? response.getHeaders(SALT_AUTH_TOKEN_HEADER)[0].getValue() : null;
+            if (responseCode == capability.getLoginSuccessResponseCode()) {
+                return response.getHeaders(SALT_AUTH_TOKEN_HEADER)[0].getValue();
+            } else if (responseCode == capability.getLoginFailureResponseCode()) {
+                return null;
+            } else {
+                throw new HttpException(String.format("Unexpected failure interacting with salt-api %s", response
+                        .getStatusLine().toString()));
+            }
         } finally {
-            EntityUtils.consumeQuietly(response.getEntity());
+            closeResource(response.getEntity());
             post.releaseConnection();
         }
+    }
+
+    protected SaltApiCapability getSaltApiCapability() {
+        return StringUtils.isBlank(saltApiVersion) ? capabilityRegistry.getLatest() : capabilityRegistry
+                .getCapability(saltApiVersion);
+    }
+    
+    // -- Isolating so powermock doesn't kill permgen --
+    protected String extractBodyFromEntity(HttpEntity entity) throws ParseException, IOException {
+        return EntityUtils.toString(entity);
+    }
+
+    protected void closeResource(HttpEntity entity) {
+        EntityUtils.consumeQuietly(entity);
     }
 }

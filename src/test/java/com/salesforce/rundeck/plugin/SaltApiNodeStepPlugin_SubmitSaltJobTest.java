@@ -4,17 +4,16 @@ import junit.framework.Assert;
 
 import org.apache.http.HttpException;
 import org.apache.http.HttpStatus;
-import org.apache.http.util.EntityUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.powermock.api.mockito.PowerMockito;
 
 public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNodeStepPluginTest {
 
     protected static final String MINIONS_ENDPOINT = String.format("%s/minions", PARAM_ENDPOINT);
-    protected static final String MINION_JSON_RESPONSE = String.format("[{\"return\": {\"jid\": \"%s\", \"minions\": [\"%s\"]}}]", OUTPUT_JID, PARAM_MINION_NAME);
-    
+    protected static final String MINION_JSON_RESPONSE = String.format(
+            "[{\"return\": {\"jid\": \"%s\", \"minions\": [\"%s\"]}}]", OUTPUT_JID, PARAM_MINION_NAME);
+
     @Before
     public void setup() throws Exception {
         spyPlugin();
@@ -88,7 +87,8 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
 
     @Test
     public void testSubmitJobMultipleResponses() throws Exception {
-        String output = String.format("[{\"return\": {\"jid\": \"%s\", \"minions\": [\"SomeOtherMinion\"]}},{}]", OUTPUT_JID);
+        String output = String.format("[{\"return\": {\"jid\": \"%s\", \"minions\": [\"SomeOtherMinion\"]}},{}]",
+                OUTPUT_JID);
         setupResponse(post, HttpStatus.SC_ACCEPTED, output);
 
         try {
@@ -103,7 +103,8 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
 
     @Test
     public void testSubmitJobMinionIdMismatch() throws Exception {
-        String output = String.format("[{\"return\": {\"jid\": \"%s\", \"minions\": [\"SomeOtherMinion\"]}}]", OUTPUT_JID);
+        String output = String.format("[{\"return\": {\"jid\": \"%s\", \"minions\": [\"SomeOtherMinion\"]}}]",
+                OUTPUT_JID);
         setupResponse(post, HttpStatus.SC_ACCEPTED, output);
 
         try {
@@ -116,21 +117,23 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
         assertThatSubmitSaltJobAttemptedSuccessfully();
     }
 
-    protected void assertThatSubmitSaltJobAttemptedSuccessfully() throws Exception {
+    protected void assertThatSubmitSaltJobAttemptedSuccessfully() {
         assertThatSubmitSaltJobAttemptedSuccessfully("fun=%s&tgt=%s", PARAM_FUNCTION, PARAM_MINION_NAME);
     }
 
-    protected void assertThatSubmitSaltJobAttemptedSuccessfully(String template, String... args) throws Exception {
-        Assert.assertEquals(MINIONS_ENDPOINT, post.getURI().toString());
-        assertPostBody(template, args);
-        Mockito.verify(post, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER,
-                AUTH_TOKEN);
-        Mockito.verify(post, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.REQUEST_ACCEPT_HEADER_NAME,
-                SaltApiNodeStepPlugin.JSON_RESPONSE_ACCEPT_TYPE);
-        Mockito.verify(client, Mockito.times(1)).execute(Mockito.same(post));
-        
-        PowerMockito.verifyStatic(Mockito.times(1));
-        EntityUtils.consumeQuietly(Mockito.same(responseEntity));
-        Mockito.verify(post, Mockito.times(1)).releaseConnection();
+    protected void assertThatSubmitSaltJobAttemptedSuccessfully(String template, String... args) {
+        try {
+            Assert.assertEquals(MINIONS_ENDPOINT, post.getURI().toString());
+            assertPostBody(template, args);
+            Mockito.verify(post, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER, AUTH_TOKEN);
+            Mockito.verify(post, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.REQUEST_ACCEPT_HEADER_NAME,
+                    SaltApiNodeStepPlugin.JSON_RESPONSE_ACCEPT_TYPE);
+            Mockito.verify(client, Mockito.times(1)).execute(Mockito.same(post));
+
+            Mockito.verify(plugin, Mockito.times(1)).closeResource(Mockito.same(responseEntity));
+            Mockito.verify(post, Mockito.times(1)).releaseConnection();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

@@ -3,16 +3,20 @@ package com.salesforce.rundeck.plugin;
 import junit.framework.Assert;
 
 import org.apache.http.HttpStatus;
-import org.apache.http.util.EntityUtils;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.powermock.api.mockito.PowerMockito;
 
 public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltApiNodeStepPluginTest {
 
     protected static final String JOBS_ENDPOINT = String.format("%s/jobs/%s", PARAM_ENDPOINT, OUTPUT_JID);
     protected static final String HOST_JSON_RESPONSE = String.format("{\"return\":[{%s:%s}]}", PARAM_MINION_NAME,
             HOST_RESPONSE);
+
+    @Before
+    public void setup() throws Exception {
+        spyPlugin();
+    }
 
     @Test
     public void testExtractOutputForJid() throws Exception {
@@ -69,15 +73,18 @@ public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltA
         assertThatJobPollAttemptedSuccessfully();
     }
 
-    protected void assertThatJobPollAttemptedSuccessfully() throws Exception {
-        Assert.assertEquals(JOBS_ENDPOINT, get.getURI().toString());
-        Mockito.verify(get, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER, AUTH_TOKEN);
-        Mockito.verify(get, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.REQUEST_ACCEPT_HEADER_NAME,
-                SaltApiNodeStepPlugin.JSON_RESPONSE_ACCEPT_TYPE);
-        Mockito.verify(client, Mockito.times(1)).execute(Mockito.same(get));
+    protected void assertThatJobPollAttemptedSuccessfully() {
+        try {
+            Assert.assertEquals(JOBS_ENDPOINT, get.getURI().toString());
+            Mockito.verify(get, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER, AUTH_TOKEN);
+            Mockito.verify(get, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.REQUEST_ACCEPT_HEADER_NAME,
+                    SaltApiNodeStepPlugin.JSON_RESPONSE_ACCEPT_TYPE);
+            Mockito.verify(client, Mockito.times(1)).execute(Mockito.same(get));
 
-        Mockito.verify(get, Mockito.times(1)).releaseConnection();
-        PowerMockito.verifyStatic(Mockito.times(1));
-        EntityUtils.consumeQuietly(Mockito.same(responseEntity));
+            Mockito.verify(get, Mockito.times(1)).releaseConnection();
+            Mockito.verify(plugin, Mockito.times(1)).closeResource(Mockito.same(responseEntity));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
