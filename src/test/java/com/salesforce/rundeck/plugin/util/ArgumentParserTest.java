@@ -6,8 +6,6 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.salesforce.rundeck.plugin.util.ArgumentParser;
-
 public class ArgumentParserTest {
 
     @Test
