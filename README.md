@@ -21,6 +21,7 @@ on the same host as Rundeck is running or by executing the request over salt-api
 ##Usage
 
 The following two job-level params should be configured to provide authentication input fields:
+
 - SALT_USER - standard input field, required.
 - SALT_PASSWORD - secure input field, required. *NOTE this should *not* be secure remote authentication*
 
@@ -33,7 +34,7 @@ In addition:
 
 The remote execution salt plugin provides three properties which need to be configured for the step:
 
-- SALT_API_END_POINT: the URL of the salt-api endpoint, ie: http://saltmaster:8000
+- SALT_API_END_POINT: the URL of the salt-api endpoint, ie: http://piab1-saltm1-1-piab.ops.sfdc.net:8000
 - Function: the function to be passed to salt-api call, minus the target 
 -- For example, if you entered `test.ping` for the function value, the resulting salt call would be `salt <yourHostName> test.ping` this field would simply contain `test.ping`. The target will always default to the hostname where Rundeck is running.
 - Eauth: the authentication mechanism salt-api should use
