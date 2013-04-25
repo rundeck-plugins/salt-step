@@ -19,8 +19,6 @@ public class SaltApiNodeStepPlugin_PollSaltResponseTest extends AbstractSaltApiN
 
     @Test
     public void testWaitForJidResponse() throws Exception {
-        plugin.pollFrequency = 1L;
-
         // Workaround for mockito spy stubbing and vararg returns.
         final AtomicInteger counter = new AtomicInteger(2);
         Mockito.doAnswer(new Answer<String>() {

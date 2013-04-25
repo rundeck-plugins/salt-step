@@ -102,7 +102,8 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     protected static final String SALT_USER_OPTION_NAME = "SALT_USER";
     protected static final String SALT_PASSWORD_OPTION_NAME = "SALT_PASSWORD";
 
-    protected long pollFrequency = 15000L;
+    protected long POLL_TIME_STEP = 500L;
+    protected long MAX_POLL_DELAY = 15000L;
 
     @PluginProperty(title = SALT_API_END_POINT_OPTION_NAME, description = "Salt Api end point", required = true, defaultValue = "${option."
             + SALT_API_END_POINT_OPTION_NAME + "}")
@@ -268,12 +269,18 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
 
     protected String waitForJidResponse(PluginStepContext context, HttpClient client, String authToken, String jid,
             String minionId) throws IOException, InterruptedException, SaltApiException {
+        long nextSleepAmount = 0;
+        int retryCount = 0;
         do {
             String response = extractOutputForJid(context, client, authToken, jid, minionId);
             if (response != null) {
                 return response;
             }
-            Thread.sleep(pollFrequency);
+            Thread.sleep(nextSleepAmount);
+            if (nextSleepAmount < MAX_POLL_DELAY) {
+                nextSleepAmount = (long) ((Math.pow(2, ++retryCount) - 1) / 2D * POLL_TIME_STEP);
+            }
+            nextSleepAmount = Math.min(MAX_POLL_DELAY, nextSleepAmount);
             if (Thread.interrupted()) {
                 Thread.currentThread().interrupt();
                 return null;
