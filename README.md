@@ -34,7 +34,7 @@ In addition:
 
 The remote execution salt plugin provides three properties which need to be configured for the step:
 
-- SALT_API_END_POINT: the URL of the salt-api endpoint, ie: http://piab1-saltm1-1-piab.ops.sfdc.net:8000
+- SALT_API_END_POINT: the URL of the salt-api endpoint, ie: https://piab1-saltm1-1-piab.ops.sfdc.net:8000
 - Function: the function to be passed to salt-api call, minus the target 
 -- For example, if you entered `test.ping` for the function value, the resulting salt call would be `salt <yourHostName> test.ping` this field would simply contain `test.ping`. The target will always default to the hostname where Rundeck is running.
 - Eauth: the authentication mechanism salt-api should use
