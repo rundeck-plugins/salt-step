@@ -7,6 +7,8 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.http.HttpEntity;
@@ -22,18 +24,21 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
-import com.dtolabs.rundeck.core.Constants;
 import com.dtolabs.rundeck.core.common.INodeEntry;
 import com.dtolabs.rundeck.core.execution.workflow.steps.FailureReason;
 import com.dtolabs.rundeck.core.execution.workflow.steps.node.NodeStepException;
 import com.dtolabs.rundeck.core.plugins.Plugin;
+import com.dtolabs.rundeck.plugins.PluginLogger;
 import com.dtolabs.rundeck.plugins.ServiceNameConstants;
 import com.dtolabs.rundeck.plugins.descriptions.PluginDescription;
 import com.dtolabs.rundeck.plugins.descriptions.PluginProperty;
 import com.dtolabs.rundeck.plugins.descriptions.TextArea;
 import com.dtolabs.rundeck.plugins.step.NodeStepPlugin;
 import com.dtolabs.rundeck.plugins.step.PluginStepContext;
+import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -44,7 +49,10 @@ import com.salesforce.rundeck.plugin.output.SaltReturnResponse;
 import com.salesforce.rundeck.plugin.output.SaltReturnResponseParseException;
 import com.salesforce.rundeck.plugin.util.ArgumentParser;
 import com.salesforce.rundeck.plugin.util.DependencyInjectionUtil;
+import com.salesforce.rundeck.plugin.util.ExponentialBackoffTimer;
 import com.salesforce.rundeck.plugin.util.HttpFactory;
+import com.salesforce.rundeck.plugin.util.LogWrapper;
+import com.salesforce.rundeck.plugin.util.RetryingHttpClientExecutor;
 import com.salesforce.rundeck.plugin.validation.SaltStepValidationException;
 import com.salesforce.rundeck.plugin.version.SaltApiCapability;
 import com.salesforce.rundeck.plugin.version.SaltApiVersionCapabilityRegistry;
@@ -61,6 +69,7 @@ import com.salesforce.rundeck.plugin.version.SaltApiVersionCapabilityRegistry;
  * <li>SALT_USER and SALT_PASSWORD options must be configured and provided on the job.</li>
  * </ul>
  */
+@NotThreadSafe
 @Plugin(name = SaltApiNodeStepPlugin.SERVICE_PROVIDER_NAME, service = ServiceNameConstants.WorkflowNodeStep)
 @PluginDescription(title = "Remote Salt Execution", description = "Run a command on a remote salt master through salt-api.")
 public class SaltApiNodeStepPlugin implements NodeStepPlugin {
@@ -103,9 +112,6 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     protected static final String SALT_USER_OPTION_NAME = "SALT_USER";
     protected static final String SALT_PASSWORD_OPTION_NAME = "SALT_PASSWORD";
 
-    protected long POLL_TIME_STEP = 500L;
-    protected long MAX_POLL_DELAY = 15000L;
-
     @PluginProperty(title = SALT_API_END_POINT_OPTION_NAME, description = "Salt Api end point", required = true, defaultValue = "${option."
             + SALT_API_END_POINT_OPTION_NAME + "}")
     protected String saltEndpoint;
@@ -121,6 +127,8 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
             + SALT_API_EAUTH_OPTION_NAME + "}")
     protected String eAuth;
 
+    protected LogWrapper logWrapper;
+
     @Autowired
     protected SaltApiVersionCapabilityRegistry capabilityRegistry;
 
@@ -133,6 +141,27 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     @Autowired
     protected SaltReturnHandlerRegistry returnHandlerRegistry;
 
+    @Autowired
+    protected RetryingHttpClientExecutor retryExecutor;
+
+    // Maximum delay in ms for polling salt minion response
+    @Autowired
+    @Value("${saltJobPolling.maximumRetryDelay}")
+    protected long maximumRetryDelay;
+
+    // Delay step in ms for polling salt minion response
+    @Autowired
+    @Value("${saltJobPolling.delayStep}")
+    protected long delayStep;
+
+    // Default number of retries for all http requests
+    @Autowired
+    @Value("${saltApi.http.numRetries}")
+    protected int numRetries;
+
+    @Autowired
+    protected ExponentialBackoffTimer.Factory timerFactory;
+
     public SaltApiNodeStepPlugin() {
         new DependencyInjectionUtil().inject(this);
     }
@@ -140,6 +169,10 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     @Override
     public void executeNodeStep(PluginStepContext context, Map<String, Object> configuration, INodeEntry entry)
             throws NodeStepException {
+        // Initialize logger for all actions
+        setLogWrapper(context.getLogger());
+        
+        // Extract options from context.
         Map<String, String> optionData = context.getDataContext().get(RUNDECK_DATA_CONTEXT_OPTION_KEY);
         if (optionData == null) {
             throw new NodeStepException("Missing data context.", SaltApiNodeStepFailureReason.ARGUMENTS_MISSING,
@@ -160,17 +193,17 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                         SaltApiNodeStepFailureReason.AUTHENTICATION_FAILURE, entry.getNodename());
             }
 
-            String dispatchedJid = submitJob(context, client, authToken, entry.getNodename());
-            String jobOutput = waitForJidResponse(context, client, authToken, dispatchedJid, entry.getNodename());
+            String dispatchedJid = submitJob(client, authToken, entry.getNodename());
+            String jobOutput = waitForJidResponse(client, authToken, dispatchedJid, entry.getNodename());
             SaltReturnHandler handler = returnHandlerRegistry.getHandlerFor(function.split(" ", 2)[0],
                     defaultReturnHandler);
             SaltReturnResponse response = handler.extractResponse(jobOutput);
 
             for (String out : response.getStandardOutput()) {
-                context.getLogger().log(Constants.INFO_LEVEL, out);
+                logWrapper.info(out);
             }
             for (String err : response.getStandardError()) {
-                context.getLogger().log(Constants.ERR_LEVEL, err);
+                logWrapper.error(err);
             }
             if (!response.isSuccessful()) {
                 throw new NodeStepException(String.format("Execution failed on minion with exit code %d",
@@ -197,9 +230,10 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
      * @return the jid of the submitted job
      * @throws HttpException
      *             if there was a communication failure with salt-api
+     * @throws InterruptedException 
      */
-    protected String submitJob(PluginStepContext context, HttpClient client, String authToken, String minionId)
-            throws HttpException, IOException, SaltApiException, SaltTargettingMismatchException {
+    protected String submitJob(HttpClient client, String authToken, String minionId) throws HttpException, IOException,
+            SaltApiException, SaltTargettingMismatchException, InterruptedException {
         List<NameValuePair> params = Lists.newArrayList();
         List<String> args = ArgumentParser.DEFAULT_ARGUMENT_SPLITTER.parse(function);
         params.add(new BasicNameValuePair(SALT_API_FUNCTION_PARAM_NAME, args.get(0)));
@@ -215,7 +249,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         post.setHeader(SALT_AUTH_TOKEN_HEADER, authToken);
         post.setHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
         post.setEntity(postEntity);
-        HttpResponse response = client.execute(post);
+        HttpResponse response = retryExecutor.execute(logWrapper, client, post, numRetries, Predicates.<Integer>alwaysFalse());
 
         int statusCode = response.getStatusLine().getStatusCode();
         HttpEntity entity = response.getEntity();
@@ -226,8 +260,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                 throw new HttpException(String.format("Expected response code %d, received %d. %s",
                         HttpStatus.SC_ACCEPTED, statusCode, entityResponse));
             } else {
-                context.getLogger().log(Constants.DEBUG_LEVEL,
-                        String.format("Received response for job submission = %s", response));
+                logWrapper.debug("Received response for job submission = %s", response);
                 Gson gson = new Gson();
                 List<Map<String, Object>> responses = gson.fromJson(entityResponse, MINION_RESPONSE_TYPE);
                 if (responses.size() != 1) {
@@ -269,24 +302,15 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         }
     }
 
-    protected String waitForJidResponse(PluginStepContext context, HttpClient client, String authToken, String jid,
-            String minionId) throws IOException, InterruptedException, SaltApiException {
-        long nextSleepAmount = 0;
-        int retryCount = 0;
+    protected String waitForJidResponse(HttpClient client, String authToken, String jid, String minionId)
+            throws IOException, InterruptedException, SaltApiException {
+        ExponentialBackoffTimer timer = timerFactory.newTimer(delayStep, maximumRetryDelay);
         do {
-            String response = extractOutputForJid(context, client, authToken, jid, minionId);
+            String response = extractOutputForJid(client, authToken, jid, minionId);
             if (response != null) {
                 return response;
             }
-            Thread.sleep(nextSleepAmount);
-            if (nextSleepAmount < MAX_POLL_DELAY) {
-                nextSleepAmount = (long) ((Math.pow(2, ++retryCount) - 1) / 2D * POLL_TIME_STEP);
-            }
-            nextSleepAmount = Math.min(MAX_POLL_DELAY, nextSleepAmount);
-            if (Thread.interrupted()) {
-                Thread.currentThread().interrupt();
-                return null;
-            }
+            timer.waitForNext();
         } while (true);
     }
 
@@ -297,21 +321,21 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
      * @throws SaltApiException
      *             if the salt-api response does not conform to the expected
      *             format.
+     * @throws InterruptedException 
      */
-    protected String extractOutputForJid(PluginStepContext context, HttpClient client, String authToken, String jid,
-            String minionId) throws IOException, SaltApiException {
+    protected String extractOutputForJid(HttpClient client, String authToken, String jid, String minionId)
+            throws IOException, SaltApiException, InterruptedException {
         String jidResource = String.format("%s%s/%s", saltEndpoint, JOBS_RESOURCE, jid);
         HttpGet get = httpFactory.createHttpGet(jidResource);
         get.setHeader(SALT_AUTH_TOKEN_HEADER, authToken);
         get.setHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
-        HttpResponse response = client.execute(get);
+        HttpResponse response = retryExecutor.execute(logWrapper, client, get, numRetries);
 
         try {
             if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
                 HttpEntity entity = response.getEntity();
                 String entityResponse = extractBodyFromEntity(entity);
-                context.getLogger().log(Constants.DEBUG_LEVEL,
-                        String.format("Received response for jobs/%s = %s", jid, response));
+                logWrapper.debug("Received response for jobs/%s = %s", jid, response);
                 Gson gson = new Gson();
                 Map<String, List<Map<String, Object>>> result = gson.fromJson(entityResponse, JOB_RESPONSE_TYPE);
                 List<Map<String, Object>> responses = result.get(SALT_OUTPUT_RETURN_KEY);
@@ -346,8 +370,8 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
      *            The password for the given user
      * @return X-Auth-Token for use in subsequent requests
      */
-    protected String authenticate(SaltApiCapability capability, HttpClient client, String user, String password)
-            throws IOException, HttpException {
+    protected String authenticate(final SaltApiCapability capability, HttpClient client, String user, String password)
+            throws IOException, HttpException, InterruptedException {
         List<NameValuePair> params = Lists.newArrayListWithCapacity(3);
         params.add(new BasicNameValuePair(SALT_API_USERNAME_PARAM_NAME, user));
         params.add(new BasicNameValuePair(SALT_API_PASSWORD_PARAM_NAME, password));
@@ -358,7 +382,12 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
 
         HttpPost post = httpFactory.createHttpPost(saltEndpoint + LOGIN_RESOURCE);
         post.setEntity(postEntity);
-        HttpResponse response = client.execute(post);
+        HttpResponse response = retryExecutor.execute(logWrapper, client, post, numRetries, new Predicate<Integer>() {
+            @Override
+            public boolean apply(Integer input) {
+                return input != capability.getLoginFailureResponseCode();
+            }
+        });
 
         try {
             int responseCode = response.getStatusLine().getStatusCode();
@@ -380,7 +409,11 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         return StringUtils.isBlank(saltApiVersion) ? capabilityRegistry.getLatest() : capabilityRegistry
                 .getCapability(saltApiVersion);
     }
-    
+
+    protected void setLogWrapper(PluginLogger logger) {
+        logWrapper = new LogWrapper(logger);
+    }
+
     // -- Isolating so powermock doesn't kill permgen --
     protected String extractBodyFromEntity(HttpEntity entity) throws ParseException, IOException {
         return EntityUtils.toString(entity);

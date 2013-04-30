@@ -9,7 +9,6 @@ import org.junit.Test;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 
-import com.dtolabs.rundeck.core.Constants;
 import com.dtolabs.rundeck.core.execution.workflow.steps.node.NodeStepException;
 import com.salesforce.rundeck.plugin.SaltApiNodeStepPlugin.SaltApiNodeStepFailureReason;
 import com.salesforce.rundeck.plugin.output.SaltReturnResponse;
@@ -80,8 +79,28 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
     }
 
     @Test
+    public void testExecuteMakesLogWrapperAvailable() throws Exception {
+        setupAuthenticate();
+        setupDoReturnJidWhenSubmitJob();
+        setupDoReturnHostResponseWhenWaitForResponse();
+        setupDoReturnSaltResponseWhenExtractResponse(0, new String[0], new String[0]);
+
+        plugin.executeNodeStep(pluginContext, configuration, node);
+
+        Mockito.verify(plugin, Mockito.times(1)).setLogWrapper(Mockito.same(pluginLogger));
+    }
+
+    @Test
+    public void testSetLogWrapper() {
+        plugin.setLogWrapper(pluginLogger);
+        Assert.assertNotNull(plugin.logWrapper);
+        Assert.assertSame(pluginLogger, plugin.logWrapper.getUnderlyingLogger());
+    }
+
+    @Test
     public void testExecuteWithSuccessfulExitCode() throws NodeStepException {
         setupAuthenticate();
+        doNothingWhenSetupLogger();
         setupDoReturnJidWhenSubmitJob();
         setupDoReturnHostResponseWhenWaitForResponse();
 
@@ -98,16 +117,17 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
                 Mockito.same(plugin.defaultReturnHandler));
         Mockito.verify(returnHandler, Mockito.times(1)).extractResponse(Mockito.eq(HOST_RESPONSE));
 
-        InOrder ordering = Mockito.inOrder(logger);
-        ordering.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.INFO_LEVEL), Mockito.eq(output1));
-        ordering.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.INFO_LEVEL), Mockito.eq(output2));
-        ordering.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.ERR_LEVEL), Mockito.eq(error1));
-        ordering.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.ERR_LEVEL), Mockito.eq(error2));
+        InOrder ordering = Mockito.inOrder(log);
+        ordering.verify(log, Mockito.times(1)).info(Mockito.eq(output1));
+        ordering.verify(log, Mockito.times(1)).info(Mockito.eq(output2));
+        ordering.verify(log, Mockito.times(1)).error(Mockito.eq(error1));
+        ordering.verify(log, Mockito.times(1)).error(Mockito.eq(error2));
     }
 
     @Test
     public void testExecuteWithUnsuccessfulExitCode() {
         setupAuthenticate();
+        doNothingWhenSetupLogger();
         setupDoReturnJidWhenSubmitJob();
         setupDoReturnHostResponseWhenWaitForResponse();
 
@@ -130,11 +150,11 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
                 Mockito.same(plugin.defaultReturnHandler));
         Mockito.verify(returnHandler, Mockito.times(1)).extractResponse(Mockito.eq(HOST_RESPONSE));
 
-        InOrder ordering = Mockito.inOrder(logger);
-        ordering.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.INFO_LEVEL), Mockito.eq(output1));
-        ordering.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.INFO_LEVEL), Mockito.eq(output2));
-        ordering.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.ERR_LEVEL), Mockito.eq(error1));
-        ordering.verify(logger, Mockito.times(1)).log(Mockito.eq(Constants.ERR_LEVEL), Mockito.eq(error2));
+        InOrder ordering = Mockito.inOrder(log);
+        ordering.verify(log, Mockito.times(1)).info(Mockito.eq(output1));
+        ordering.verify(log, Mockito.times(1)).info(Mockito.eq(output2));
+        ordering.verify(log, Mockito.times(1)).error(Mockito.eq(error1));
+        ordering.verify(log, Mockito.times(1)).error(Mockito.eq(error2));
     }
 
     @Test
@@ -209,8 +229,8 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
 
         Mockito.doThrow(new InterruptedException())
                 .when(plugin)
-                .waitForJidResponse(Mockito.same(pluginContext), Mockito.same(client), Mockito.eq(AUTH_TOKEN),
-                        Mockito.eq(OUTPUT_JID), Mockito.eq(PARAM_MINION_NAME));
+                .waitForJidResponse(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(OUTPUT_JID),
+                        Mockito.eq(PARAM_MINION_NAME));
 
         try {
             plugin.executeNodeStep(pluginContext, configuration, node);
@@ -239,8 +259,8 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
         try {
             Mockito.doReturn(HOST_RESPONSE)
                     .when(plugin)
-                    .waitForJidResponse(Mockito.same(pluginContext), Mockito.same(client), Mockito.eq(AUTH_TOKEN),
-                            Mockito.eq(OUTPUT_JID), Mockito.eq(PARAM_MINION_NAME));
+                    .waitForJidResponse(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(OUTPUT_JID),
+                            Mockito.eq(PARAM_MINION_NAME));
             return this;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -249,10 +269,8 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
 
     protected SaltApiNodeStepPlugin_ExecuteTest setupDoReturnJidWhenSubmitJob() {
         try {
-            Mockito.doReturn(OUTPUT_JID)
-                    .when(plugin)
-                    .submitJob(Mockito.same(pluginContext), Mockito.same(client), Mockito.eq(AUTH_TOKEN),
-                            Mockito.eq(PARAM_MINION_NAME));
+            Mockito.doReturn(OUTPUT_JID).when(plugin)
+                    .submitJob(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(PARAM_MINION_NAME));
             return this;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -261,13 +279,16 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
 
     protected SaltApiNodeStepPlugin_ExecuteTest setupDoThrowWhenSubmitJob(Throwable t) {
         try {
-            Mockito.doThrow(t)
-                    .when(plugin)
-                    .submitJob(Mockito.same(pluginContext), Mockito.same(client), Mockito.eq(AUTH_TOKEN),
-                            Mockito.eq(PARAM_MINION_NAME));
+            Mockito.doThrow(t).when(plugin)
+                    .submitJob(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(PARAM_MINION_NAME));
             return this;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    protected SaltApiNodeStepPlugin_ExecuteTest doNothingWhenSetupLogger() {
+        Mockito.doNothing().when(plugin).setLogWrapper(Mockito.same(pluginLogger));
+        return this;
     }
 }

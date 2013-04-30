@@ -31,33 +31,34 @@ public class SaltApiNodeStepPlugin_PollSaltResponseTest extends AbstractSaltApiN
             }
         })
                 .when(plugin)
-                .extractOutputForJid(Mockito.same(pluginContext), Mockito.same(client), Mockito.eq(AUTH_TOKEN),
-                        Mockito.eq(OUTPUT_JID), Mockito.eq(PARAM_MINION_NAME));
+                .extractOutputForJid(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(OUTPUT_JID),
+                        Mockito.eq(PARAM_MINION_NAME));
 
         Assert.assertEquals("Expected mocked host response to be returned", HOST_RESPONSE,
-                plugin.waitForJidResponse(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
+                plugin.waitForJidResponse(client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
 
-        Mockito.verify(plugin, Mockito.times(2)).extractOutputForJid(Mockito.same(pluginContext), Mockito.same(client),
-                Mockito.eq(AUTH_TOKEN), Mockito.eq(OUTPUT_JID), Mockito.eq(PARAM_MINION_NAME));
+        Mockito.verify(plugin, Mockito.times(2)).extractOutputForJid(Mockito.same(client), Mockito.eq(AUTH_TOKEN),
+                Mockito.eq(OUTPUT_JID), Mockito.eq(PARAM_MINION_NAME));
+        Mockito.verify(timer, Mockito.times(1)).waitForNext();
     }
 
     @Test
     public void testWaitForJidResponseInterrupted() throws Exception {
         Mockito.doReturn(null)
                 .when(plugin)
-                .extractOutputForJid(Mockito.same(pluginContext), Mockito.same(client), Mockito.eq(AUTH_TOKEN),
-                        Mockito.eq(OUTPUT_JID), Mockito.eq(PARAM_MINION_NAME));
+                .extractOutputForJid(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(OUTPUT_JID),
+                        Mockito.eq(PARAM_MINION_NAME));
 
-        Thread.currentThread().interrupt();
+        Mockito.doThrow(new InterruptedException()).when(timer).waitForNext();
         try {
             Assert.assertNull("Expected no response due to thread interruption",
-                    plugin.waitForJidResponse(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
+                    plugin.waitForJidResponse(client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
             Assert.fail("Expected to be interrupted.");
         } catch (InterruptedException e) {
             // expected
         }
 
-        Mockito.verify(plugin, Mockito.times(1)).extractOutputForJid(Mockito.same(pluginContext), Mockito.same(client),
-                Mockito.eq(AUTH_TOKEN), Mockito.eq(OUTPUT_JID), Mockito.eq(PARAM_MINION_NAME));
+        Mockito.verify(plugin, Mockito.times(1)).extractOutputForJid(Mockito.same(client), Mockito.eq(AUTH_TOKEN),
+                Mockito.eq(OUTPUT_JID), Mockito.eq(PARAM_MINION_NAME));
     }
 }

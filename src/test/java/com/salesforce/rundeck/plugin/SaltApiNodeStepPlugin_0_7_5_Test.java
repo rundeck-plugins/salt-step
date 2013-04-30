@@ -1,10 +1,7 @@
 package com.salesforce.rundeck.plugin;
 
-import java.io.IOException;
-
 import junit.framework.Assert;
 
-import org.apache.http.HttpException;
 import org.apache.http.HttpStatus;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,22 +19,22 @@ public class SaltApiNodeStepPlugin_0_7_5_Test extends AbstractSaltApiNodeStepPlu
     }
 
     @Test
-    public void testAuthenticateWithRedirectResponseCode() throws IOException, HttpException {
+    public void testAuthenticateWithRedirectResponseCode() throws Exception {
         setupAuthenticationHeadersOnPost(HttpStatus.SC_MOVED_TEMPORARILY);
 
         Assert.assertEquals("Expected authentication to return correct auth token", AUTH_TOKEN,
                 plugin.authenticate(legacyCapability, client, PARAM_USER, PARAM_PASSWORD));
 
-        assertThatAuthenticationAttemptedSuccessfully();
+        assertThatAuthenticationAttemptedSuccessfully(legacyCapability);
     }
 
     @Test
-    public void testAuthenticateFailure() throws IOException, HttpException {
+    public void testAuthenticateFailure() throws Exception {
         setupResponseCode(post, HttpStatus.SC_INTERNAL_SERVER_ERROR);
 
         Assert.assertNull("Expected authentication failure returning null",
                 plugin.authenticate(legacyCapability, client, PARAM_USER, PARAM_PASSWORD));
 
-        assertThatAuthenticationAttemptedSuccessfully();
+        assertThatAuthenticationAttemptedSuccessfully(legacyCapability);
     }
 }

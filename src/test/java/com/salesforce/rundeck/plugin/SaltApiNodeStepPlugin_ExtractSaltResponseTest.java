@@ -23,7 +23,7 @@ public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltA
         setupResponse(get, HttpStatus.SC_OK, HOST_JSON_RESPONSE);
 
         Assert.assertEquals("Expected host response to be parsed out from json response", HOST_RESPONSE,
-                plugin.extractOutputForJid(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
+                plugin.extractOutputForJid(client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
 
         assertThatJobPollAttemptedSuccessfully();
     }
@@ -33,7 +33,7 @@ public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltA
         setupResponseCode(get, HttpStatus.SC_INTERNAL_SERVER_ERROR);
 
         Assert.assertNull("Expected null response due to internal server error",
-                plugin.extractOutputForJid(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
+                plugin.extractOutputForJid(client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
 
         assertThatJobPollAttemptedSuccessfully();
     }
@@ -44,7 +44,7 @@ public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltA
         setupResponse(get, HttpStatus.SC_OK, emptyHostResponse);
 
         Assert.assertEquals("Expected empty response for empty minion response", "\"\"",
-                plugin.extractOutputForJid(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
+                plugin.extractOutputForJid(client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
 
         assertThatJobPollAttemptedSuccessfully();
     }
@@ -55,7 +55,7 @@ public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltA
         setupResponse(get, HttpStatus.SC_OK, noResponse);
 
         Assert.assertNull("Expected no response for no minion response",
-                plugin.extractOutputForJid(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
+                plugin.extractOutputForJid(client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
 
         assertThatJobPollAttemptedSuccessfully();
     }
@@ -66,7 +66,7 @@ public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltA
         setupResponse(get, HttpStatus.SC_OK, multipleResponse);
 
         try {
-            plugin.extractOutputForJid(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME);
+            plugin.extractOutputForJid(client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME);
             Assert.fail("Expected exception for multiple responses.");
         } catch (SaltApiException e) {
             // expected
@@ -81,7 +81,9 @@ public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltA
             Mockito.verify(get, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER, AUTH_TOKEN);
             Mockito.verify(get, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.REQUEST_ACCEPT_HEADER_NAME,
                     SaltApiNodeStepPlugin.JSON_RESPONSE_ACCEPT_TYPE);
-            Mockito.verify(client, Mockito.times(1)).execute(Mockito.same(get));
+            Mockito.verify(retryingExecutor, Mockito.times(1)).execute(Mockito.same(log), Mockito.same(client),
+                    Mockito.same(get), Mockito.eq(plugin.numRetries));
+            Mockito.verifyZeroInteractions(client);
 
             Mockito.verify(get, Mockito.times(1)).releaseConnection();
             Mockito.verify(plugin, Mockito.times(1)).closeResource(Mockito.same(responseEntity));

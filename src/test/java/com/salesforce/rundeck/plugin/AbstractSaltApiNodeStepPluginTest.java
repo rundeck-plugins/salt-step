@@ -25,9 +25,14 @@ import org.mockito.Mockito;
 import com.dtolabs.rundeck.core.common.INodeEntry;
 import com.dtolabs.rundeck.plugins.PluginLogger;
 import com.dtolabs.rundeck.plugins.step.PluginStepContext;
+import com.google.common.base.Predicate;
 import com.salesforce.rundeck.plugin.output.SaltReturnHandler;
 import com.salesforce.rundeck.plugin.output.SaltReturnHandlerRegistry;
+import com.salesforce.rundeck.plugin.util.ExponentialBackoffTimer;
+import com.salesforce.rundeck.plugin.util.ExponentialBackoffTimer.Factory;
 import com.salesforce.rundeck.plugin.util.HttpFactory;
+import com.salesforce.rundeck.plugin.util.LogWrapper;
+import com.salesforce.rundeck.plugin.util.RetryingHttpClientExecutor;
 import com.salesforce.rundeck.plugin.version.SaltApiCapability;
 
 public abstract class AbstractSaltApiNodeStepPluginTest {
@@ -43,21 +48,32 @@ public abstract class AbstractSaltApiNodeStepPluginTest {
     protected static final String OUTPUT_JID = "20130213093536481553";
     protected static final String HOST_RESPONSE = "\"some response\"";
 
+    // Plugin inputs from rundeck
+    protected INodeEntry node;
+    protected Map<String, Object> configuration;
+    protected Map<String, Map<String, String>> dataContext;
+    protected Map<String, String> optionContext;
+    protected PluginStepContext pluginContext;
+    protected PluginLogger pluginLogger;
+
+    // Unit under test
     protected SaltApiNodeStepPlugin plugin;
-    protected SaltApiCapability latestCapability;
+
+    // Http dependencies
     protected HttpClient client;
     protected HttpGet get;
     protected HttpPost post;
     protected HttpEntity responseEntity;
     protected HttpResponse response;
-    protected PluginStepContext pluginContext;
-    protected PluginLogger logger;
-    protected INodeEntry node;
-    protected Map<String, Object> configuration;
-    protected Map<String, Map<String, String>> dataContext;
-    protected Map<String, String> optionContext;
+
+    // Plugin dependencies
+    protected SaltApiCapability latestCapability;
     protected SaltReturnHandlerRegistry returnHandlerRegistry;
     protected SaltReturnHandler returnHandler;
+    protected ExponentialBackoffTimer timer;
+    protected Factory timerFactory;
+    protected LogWrapper log;
+    protected RetryingHttpClientExecutor retryingExecutor;
 
     @Before
     public void setUp() {
@@ -110,8 +126,8 @@ public abstract class AbstractSaltApiNodeStepPluginTest {
 
         // Setup execute method's arguments
         pluginContext = Mockito.mock(PluginStepContext.class);
-        logger = Mockito.mock(PluginLogger.class);
-        Mockito.when(pluginContext.getLogger()).thenReturn(logger);
+        pluginLogger = Mockito.mock(PluginLogger.class);
+        Mockito.when(pluginContext.getLogger()).thenReturn(pluginLogger);
         node = Mockito.mock(INodeEntry.class);
         Mockito.when(node.getNodename()).thenReturn(PARAM_MINION_NAME);
         configuration = new HashMap<String, Object>();
@@ -122,6 +138,17 @@ public abstract class AbstractSaltApiNodeStepPluginTest {
         optionContext.put(SaltApiNodeStepPlugin.SALT_PASSWORD_OPTION_NAME, PARAM_PASSWORD);
         dataContext.put(SaltApiNodeStepPlugin.RUNDECK_DATA_CONTEXT_OPTION_KEY, optionContext);
         Mockito.when(pluginContext.getDataContext()).thenReturn(dataContext);
+
+        timerFactory = Mockito.mock(Factory.class);
+        timer = Mockito.mock(ExponentialBackoffTimer.class);
+        Mockito.when(timerFactory.newTimer(Mockito.anyLong(), Mockito.anyLong())).thenReturn(timer);
+        plugin.timerFactory = timerFactory;
+
+        log = Mockito.mock(LogWrapper.class);
+        plugin.logWrapper = log;
+
+        retryingExecutor = Mockito.mock(RetryingHttpClientExecutor.class);
+        plugin.retryExecutor = retryingExecutor;
     }
 
     protected AbstractSaltApiNodeStepPluginTest spyPlugin() {
@@ -153,13 +180,19 @@ public abstract class AbstractSaltApiNodeStepPluginTest {
         return setupResponse(method, code, null);
     }
 
+    @SuppressWarnings("unchecked")
     protected AbstractSaltApiNodeStepPluginTest setupResponse(HttpRequestBase method, int code, String responseBody) {
         try {
             StatusLine statusLine = Mockito.mock(StatusLine.class);
             Mockito.when(response.getStatusLine()).thenReturn(statusLine);
             Mockito.when(statusLine.getStatusCode()).thenReturn(code);
             Mockito.doReturn(responseBody).when(plugin).extractBodyFromEntity(Mockito.same(responseEntity));
-            Mockito.when(client.execute(Mockito.same(method))).thenReturn(response);
+            Mockito.when(
+                    retryingExecutor.execute(Mockito.any(LogWrapper.class), Mockito.same(client), Mockito.same(method),
+                            Mockito.anyInt())).thenReturn(response);
+            Mockito.when(
+                    retryingExecutor.execute(Mockito.any(LogWrapper.class), Mockito.same(client), Mockito.same(method),
+                            Mockito.anyInt(), Mockito.any(Predicate.class))).thenReturn(response);
             return this;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -196,16 +229,28 @@ public abstract class AbstractSaltApiNodeStepPluginTest {
                 new Header[] { new BasicHeader(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER, AUTH_TOKEN) });
         return this;
     }
-
+    
     protected void assertThatAuthenticationAttemptedSuccessfully() {
+        assertThatAuthenticationAttemptedSuccessfully(latestCapability);
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    protected void assertThatAuthenticationAttemptedSuccessfully(SaltApiCapability capability) {
         try {
             Assert.assertEquals("Expected correct login endpoing to be used", PARAM_ENDPOINT + "/login", post.getURI()
                     .toString());
             assertPostBody("username=%s&password=%s&eauth=%s", PARAM_USER, PARAM_PASSWORD, PARAM_EAUTH);
-            Mockito.verify(client, Mockito.times(1)).execute(Mockito.same(post));
+
+            Mockito.verifyZeroInteractions(client);
+            ArgumentCaptor<Predicate> captor = ArgumentCaptor.forClass(Predicate.class);
+            Mockito.verify(retryingExecutor, Mockito.times(1)).execute(Mockito.same(log), Mockito.same(client),
+                    Mockito.same(post), Mockito.eq(plugin.numRetries), captor.capture());
+            Predicate<Integer> authenticationStatusCodePredicate = captor.getValue();
+            Assert.assertFalse(authenticationStatusCodePredicate.apply(capability.getLoginFailureResponseCode()));
 
             Mockito.verify(plugin, Mockito.times(1)).closeResource(Mockito.same(responseEntity));
             Mockito.verify(post, Mockito.times(1)).releaseConnection();
+            Mockito.verifyZeroInteractions(client);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
