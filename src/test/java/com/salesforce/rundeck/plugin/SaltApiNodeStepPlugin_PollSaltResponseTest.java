@@ -34,7 +34,7 @@ public class SaltApiNodeStepPlugin_PollSaltResponseTest extends AbstractSaltApiN
                 .extractOutputForJid(Mockito.same(pluginContext), Mockito.same(client), Mockito.eq(AUTH_TOKEN),
                         Mockito.eq(OUTPUT_JID), Mockito.eq(PARAM_MINION_NAME));
 
-        Assert.assertEquals(HOST_RESPONSE,
+        Assert.assertEquals("Expected mocked host response to be returned", HOST_RESPONSE,
                 plugin.waitForJidResponse(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
 
         Mockito.verify(plugin, Mockito.times(2)).extractOutputForJid(Mockito.same(pluginContext), Mockito.same(client),
@@ -50,8 +50,8 @@ public class SaltApiNodeStepPlugin_PollSaltResponseTest extends AbstractSaltApiN
 
         Thread.currentThread().interrupt();
         try {
-            Assert.assertNull(plugin.waitForJidResponse(pluginContext, client, AUTH_TOKEN, OUTPUT_JID,
-                    PARAM_MINION_NAME));
+            Assert.assertNull("Expected no response due to thread interruption",
+                    plugin.waitForJidResponse(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
             Assert.fail("Expected to be interrupted.");
         } catch (InterruptedException e) {
             // expected

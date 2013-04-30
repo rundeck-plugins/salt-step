@@ -16,13 +16,13 @@ public class SaltReturnResponse {
     protected final List<String> standardError = Lists.newLinkedList();
 
     public void addOutput(String out) {
-        if (StringUtils.isNotEmpty(out)) {
+        if (StringUtils.isNotBlank(out)) {
             standardOutput.add(out);
         }
     }
 
     public void addError(String err) {
-        if (StringUtils.isNotEmpty(err)) {
+        if (StringUtils.isNotBlank(err)) {
             standardError.add(err);
         }
     }

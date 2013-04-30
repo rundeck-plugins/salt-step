@@ -15,13 +15,13 @@ public class SaltApiResponseOutputTest {
         SaltApiResponseOutput output = new SaltApiResponseOutput();
         List<String> minions = Lists.newArrayList("a", "b");
         output.minions = minions;
-        Assert.assertEquals(minions, output.getMinions());
+        Assert.assertEquals("Expected passed in minions", minions, output.getMinions());
         output.getMinions().add("asdf");
     }
     
     @Test
     public void testGetUnsetMinions() {
         SaltApiResponseOutput output = new SaltApiResponseOutput();
-        Assert.assertEquals(0, output.getMinions().size());
+        Assert.assertEquals("Expected no minions if unset", 0, output.getMinions().size());
     }
 }

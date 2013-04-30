@@ -176,12 +176,12 @@ public abstract class AbstractSaltApiNodeStepPluginTest {
             ArgumentCaptor<StringEntity> captor = ArgumentCaptor.forClass(StringEntity.class);
             Mockito.verify(post, Mockito.times(1)).setEntity(captor.capture());
             try {
-                Assert.assertEquals(String.format(dataTemplate, encodedArgs),
-                        IOUtils.toString(captor.getValue().getContent()));
-                Assert.assertEquals(SaltApiNodeStepPlugin.CHAR_SET_ENCODING, captor.getValue().getContentEncoding()
-                        .getValue());
-                Assert.assertEquals(SaltApiNodeStepPlugin.REQUEST_CONTENT_TYPE, captor.getValue().getContentType()
-                        .getValue());
+                Assert.assertEquals("Expected correctly formatted/populated post body",
+                        String.format(dataTemplate, encodedArgs), IOUtils.toString(captor.getValue().getContent()));
+                Assert.assertEquals("Expected correct encoding on request", SaltApiNodeStepPlugin.CHAR_SET_ENCODING,
+                        captor.getValue().getContentEncoding().getValue());
+                Assert.assertEquals("Expected correct content type on request",
+                        SaltApiNodeStepPlugin.REQUEST_CONTENT_TYPE, captor.getValue().getContentType().getValue());
             } finally {
                 IOUtils.closeQuietly(captor.getValue().getContent());
             }
@@ -199,7 +199,8 @@ public abstract class AbstractSaltApiNodeStepPluginTest {
 
     protected void assertThatAuthenticationAttemptedSuccessfully() {
         try {
-            Assert.assertEquals(PARAM_ENDPOINT + "/login", post.getURI().toString());
+            Assert.assertEquals("Expected correct login endpoing to be used", PARAM_ENDPOINT + "/login", post.getURI()
+                    .toString());
             assertPostBody("username=%s&password=%s&eauth=%s", PARAM_USER, PARAM_PASSWORD, PARAM_EAUTH);
             Mockito.verify(client, Mockito.times(1)).execute(Mockito.same(post));
 

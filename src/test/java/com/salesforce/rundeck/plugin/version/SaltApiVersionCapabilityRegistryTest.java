@@ -22,26 +22,29 @@ public class SaltApiVersionCapabilityRegistryTest {
 
     @Test
     public void testGetExact() {
-        Assert.assertSame(v_0_7_0, registry.getCapability("0.7.0"));
+        Assert.assertSame("Expected exact match for version", v_0_7_0, registry.getCapability("0.7.0"));
     }
 
     @Test
     public void testGetLowerThanBound() {
-        Assert.assertSame(v_0_7_0, registry.getCapability("0.6.0"));
+        Assert.assertSame("Expected lower than bounds gets lowest known version", v_0_7_0,
+                registry.getCapability("0.6.0"));
     }
-    
+
     @Test
     public void testGetBetweenBounds() {
-        Assert.assertSame(v_0_8_0, registry.getCapability("0.8.5"));
+        Assert.assertSame("Expected between versions to get highest version lower than passed in version", v_0_8_0,
+                registry.getCapability("0.8.5"));
     }
 
     @Test
     public void testGetHigherThanBound() {
-        Assert.assertSame(v_0_9_0, registry.getCapability("0.10.0"));
+        Assert.assertSame("Expected higher than bounds gets highest known version", v_0_9_0,
+                registry.getCapability("0.10.0"));
     }
 
     @Test
     public void testGetLatest() {
-        Assert.assertSame(v_0_9_0, registry.getLatest());
+        Assert.assertSame("Expected latest to be highest known version", v_0_9_0, registry.getLatest());
     }
 }

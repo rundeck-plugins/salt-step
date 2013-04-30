@@ -48,7 +48,7 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
             plugin.executeNodeStep(pluginContext, configuration, node);
             Assert.fail("Expected exception");
         } catch (SaltStepValidationException ne) {
-            Assert.assertSame(e, ne);
+            Assert.assertSame("Expected execute to throw mocked exception", e, ne);
         }
     }
 
@@ -59,7 +59,8 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
             plugin.executeNodeStep(pluginContext, configuration, node);
             Assert.fail("Expected exception");
         } catch (NodeStepException e) {
-            Assert.assertEquals(SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, e.getFailureReason());
+            Assert.assertEquals("Expected failure reason to be set based on exception type",
+                    SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, e.getFailureReason());
         }
     }
 
@@ -121,7 +122,8 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
             plugin.executeNodeStep(pluginContext, configuration, node);
             Assert.fail("Expected failure due to exit code.");
         } catch (NodeStepException e) {
-            Assert.assertEquals(SaltApiNodeStepFailureReason.EXIT_CODE, e.getFailureReason());
+            Assert.assertEquals("Expected failure reason to be set based on exception type",
+                    SaltApiNodeStepFailureReason.EXIT_CODE, e.getFailureReason());
         }
 
         Mockito.verify(returnHandlerRegistry, Mockito.times(1)).getHandlerFor(Mockito.eq(PARAM_FUNCTION),
@@ -148,8 +150,9 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
             plugin.executeNodeStep(pluginContext, configuration, node);
             Assert.fail("Expected failure due to response parse exception.");
         } catch (NodeStepException e) {
-            Assert.assertEquals(SaltApiNodeStepFailureReason.SALT_API_FAILURE, e.getFailureReason());
-            Assert.assertSame(pe, e.getCause());
+            Assert.assertEquals("Expected failure reason to be set based on exception type",
+                    SaltApiNodeStepFailureReason.SALT_API_FAILURE, e.getFailureReason());
+            Assert.assertSame("Expected parse exception to be set as root cause", pe, e.getCause());
         }
 
         Mockito.verify(returnHandlerRegistry, Mockito.times(1)).getHandlerFor(Mockito.eq(PARAM_FUNCTION),
@@ -166,7 +169,8 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
             plugin.executeNodeStep(pluginContext, configuration, node);
             Assert.fail("Expected node step failure.");
         } catch (NodeStepException e) {
-            Assert.assertEquals(SaltApiNodeStepFailureReason.SALT_API_FAILURE, e.getFailureReason());
+            Assert.assertEquals("Expected failure reason to be set based on exception type",
+                    SaltApiNodeStepFailureReason.SALT_API_FAILURE, e.getFailureReason());
         }
     }
 
@@ -179,7 +183,8 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
             plugin.executeNodeStep(pluginContext, configuration, node);
             Assert.fail("Expected node step failure.");
         } catch (NodeStepException e) {
-            Assert.assertEquals(SaltApiNodeStepFailureReason.SALT_TARGET_MISMATCH, e.getFailureReason());
+            Assert.assertEquals("Expected failure reason to be set based on exception type",
+                    SaltApiNodeStepFailureReason.SALT_TARGET_MISMATCH, e.getFailureReason());
         }
     }
 
@@ -192,7 +197,8 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
             plugin.executeNodeStep(pluginContext, configuration, node);
             Assert.fail("Expected node step failure.");
         } catch (NodeStepException e) {
-            Assert.assertEquals(SaltApiNodeStepFailureReason.COMMUNICATION_FAILURE, e.getFailureReason());
+            Assert.assertEquals("Expected failure reason to be set based on exception type",
+                    SaltApiNodeStepFailureReason.COMMUNICATION_FAILURE, e.getFailureReason());
         }
     }
 
@@ -210,7 +216,8 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
             plugin.executeNodeStep(pluginContext, configuration, node);
             Assert.fail("Expected node step failure.");
         } catch (NodeStepException e) {
-            Assert.assertEquals(SaltApiNodeStepFailureReason.INTERRUPTED, e.getFailureReason());
+            Assert.assertEquals("Expected failure reason to be set based on exception type",
+                    SaltApiNodeStepFailureReason.INTERRUPTED, e.getFailureReason());
         }
     }
 

@@ -8,14 +8,14 @@ public class DefaultSaltReturnHandlerTest {
     @Test
     public void testConstructor() {
         DefaultSaltReturnHandler handler = new DefaultSaltReturnHandler();
-        Assert.assertEquals(0, handler.exitCode.intValue());
+        Assert.assertEquals("Didn't get default response code", 0, handler.exitCode.intValue());
     }
 
     @Test
     public void testConstructorExitCode() {
         Integer exitCode = 127;
         DefaultSaltReturnHandler handler = new DefaultSaltReturnHandler(exitCode);
-        Assert.assertEquals(exitCode, handler.exitCode);
+        Assert.assertEquals("Didn't get passed in response code", exitCode, handler.exitCode);
     }
 
     @Test
@@ -23,7 +23,7 @@ public class DefaultSaltReturnHandlerTest {
         Integer exitCode = 127;
         DefaultSaltReturnHandler handler = new DefaultSaltReturnHandler();
         handler.setExitCode(exitCode);
-        Assert.assertEquals(exitCode, handler.exitCode);
+        Assert.assertEquals("Didn't get explicity set response code", exitCode, handler.exitCode);
     }
 
     @Test
@@ -31,11 +31,11 @@ public class DefaultSaltReturnHandlerTest {
         SaltReturnHandler handler = new DefaultSaltReturnHandler();
         String rawResponse = "some random response";
         SaltReturnResponse response = handler.extractResponse(rawResponse);
-        Assert.assertTrue(response.isSuccessful());
-        Assert.assertEquals(0, response.getExitCode().intValue());
-        Assert.assertEquals(1, response.getStandardOutput().size());
-        Assert.assertEquals(rawResponse, response.getStandardOutput().get(0));
-        Assert.assertTrue(response.getStandardError().isEmpty());
+        Assert.assertTrue("Didn't interpret default response code as success", response.isSuccessful());
+        Assert.assertEquals("Didn't get default response code", 0, response.getExitCode().intValue());
+        Assert.assertEquals("Didn't get exactly one stdout line", 1, response.getStandardOutput().size());
+        Assert.assertEquals("Stdout line didn't match expected input", rawResponse, response.getStandardOutput().get(0));
+        Assert.assertTrue("Expected stderr to be empty", response.getStandardError().isEmpty());
     }
 
     @Test
@@ -44,19 +44,19 @@ public class DefaultSaltReturnHandlerTest {
         SaltReturnHandler handler = new DefaultSaltReturnHandler(exitCode);
         String rawResponse = "some random response";
         SaltReturnResponse response = handler.extractResponse(rawResponse);
-        Assert.assertEquals(exitCode, response.getExitCode());
-        Assert.assertEquals(1, response.getStandardOutput().size());
-        Assert.assertEquals(rawResponse, response.getStandardOutput().get(0));
-        Assert.assertTrue(response.getStandardError().isEmpty());
+        Assert.assertEquals("Didn't get passed in response code", exitCode, response.getExitCode());
+        Assert.assertEquals("Didn't get exactly one stdout line", 1, response.getStandardOutput().size());
+        Assert.assertEquals("Stdout line didn't match expected input", rawResponse, response.getStandardOutput().get(0));
+        Assert.assertTrue("Expected stderr to be empty", response.getStandardError().isEmpty());
     }
 
     @Test
     public void testExtractResponseWithNullInput() {
         SaltReturnHandler handler = new DefaultSaltReturnHandler();
         SaltReturnResponse response = handler.extractResponse(null);
-        Assert.assertTrue(response.isSuccessful());
-        Assert.assertEquals(0, response.getExitCode().intValue());
-        Assert.assertTrue(response.getStandardOutput().isEmpty());
-        Assert.assertTrue(response.getStandardError().isEmpty());
+        Assert.assertTrue("Didn't interpret default response code as success", response.isSuccessful());
+        Assert.assertEquals("Didn't get default response code", 0, response.getExitCode().intValue());
+        Assert.assertTrue("Expected stdout to be empty", response.getStandardOutput().isEmpty());
+        Assert.assertTrue("Expected stderr to be empty", response.getStandardError().isEmpty());
     }
 }

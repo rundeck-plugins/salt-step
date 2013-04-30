@@ -23,7 +23,8 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
     public void testSubmitJob() throws Exception {
         setupResponse(post, HttpStatus.SC_ACCEPTED, MINION_JSON_RESPONSE);
 
-        Assert.assertEquals(OUTPUT_JID, plugin.submitJob(pluginContext, client, AUTH_TOKEN, PARAM_MINION_NAME));
+        Assert.assertEquals("Expected mocked jid after submitting job", OUTPUT_JID,
+                plugin.submitJob(pluginContext, client, AUTH_TOKEN, PARAM_MINION_NAME));
 
         assertThatSubmitSaltJobAttemptedSuccessfully();
     }
@@ -35,7 +36,8 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
         String arg1 = "sdf%33&";
         String arg2 = "adsf asdf";
         plugin.function = String.format("%s \"%s\" \"%s\"", PARAM_FUNCTION, arg1, arg2);
-        Assert.assertEquals(OUTPUT_JID, plugin.submitJob(pluginContext, client, AUTH_TOKEN, PARAM_MINION_NAME));
+        Assert.assertEquals("Expected mocked jid after submitting job", OUTPUT_JID,
+                plugin.submitJob(pluginContext, client, AUTH_TOKEN, PARAM_MINION_NAME));
 
         assertThatSubmitSaltJobAttemptedSuccessfully("fun=%s&tgt=%s&arg=%s&arg=%s", PARAM_FUNCTION, PARAM_MINION_NAME,
                 arg1, arg2);
@@ -123,7 +125,8 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
 
     protected void assertThatSubmitSaltJobAttemptedSuccessfully(String template, String... args) {
         try {
-            Assert.assertEquals(MINIONS_ENDPOINT, post.getURI().toString());
+            Assert.assertEquals("Expected correct job submission endpoint to be used", MINIONS_ENDPOINT, post.getURI()
+                    .toString());
             assertPostBody(template, args);
             Mockito.verify(post, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER, AUTH_TOKEN);
             Mockito.verify(post, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.REQUEST_ACCEPT_HEADER_NAME,

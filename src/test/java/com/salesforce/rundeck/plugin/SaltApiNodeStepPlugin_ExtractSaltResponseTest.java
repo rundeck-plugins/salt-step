@@ -22,7 +22,7 @@ public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltA
     public void testExtractOutputForJid() throws Exception {
         setupResponse(get, HttpStatus.SC_OK, HOST_JSON_RESPONSE);
 
-        Assert.assertEquals(HOST_RESPONSE,
+        Assert.assertEquals("Expected host response to be parsed out from json response", HOST_RESPONSE,
                 plugin.extractOutputForJid(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
 
         assertThatJobPollAttemptedSuccessfully();
@@ -32,7 +32,8 @@ public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltA
     public void testExtractOutputForJidBadResponse() throws Exception {
         setupResponseCode(get, HttpStatus.SC_INTERNAL_SERVER_ERROR);
 
-        Assert.assertNull(plugin.extractOutputForJid(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
+        Assert.assertNull("Expected null response due to internal server error",
+                plugin.extractOutputForJid(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
 
         assertThatJobPollAttemptedSuccessfully();
     }
@@ -42,7 +43,7 @@ public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltA
         String emptyHostResponse = "{\"return\":[{" + PARAM_MINION_NAME + ": \"\"}]}";
         setupResponse(get, HttpStatus.SC_OK, emptyHostResponse);
 
-        Assert.assertEquals("\"\"",
+        Assert.assertEquals("Expected empty response for empty minion response", "\"\"",
                 plugin.extractOutputForJid(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
 
         assertThatJobPollAttemptedSuccessfully();
@@ -53,7 +54,8 @@ public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltA
         String noResponse = "{\"return\":[{}]}";
         setupResponse(get, HttpStatus.SC_OK, noResponse);
 
-        Assert.assertNull(plugin.extractOutputForJid(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
+        Assert.assertNull("Expected no response for no minion response",
+                plugin.extractOutputForJid(pluginContext, client, AUTH_TOKEN, OUTPUT_JID, PARAM_MINION_NAME));
 
         assertThatJobPollAttemptedSuccessfully();
     }
@@ -75,7 +77,7 @@ public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltA
 
     protected void assertThatJobPollAttemptedSuccessfully() {
         try {
-            Assert.assertEquals(JOBS_ENDPOINT, get.getURI().toString());
+            Assert.assertEquals("Expected correct polling endpoint to be used", JOBS_ENDPOINT, get.getURI().toString());
             Mockito.verify(get, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.SALT_AUTH_TOKEN_HEADER, AUTH_TOKEN);
             Mockito.verify(get, Mockito.times(1)).setHeader(SaltApiNodeStepPlugin.REQUEST_ACCEPT_HEADER_NAME,
                     SaltApiNodeStepPlugin.JSON_RESPONSE_ACCEPT_TYPE);

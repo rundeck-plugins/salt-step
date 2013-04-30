@@ -73,7 +73,7 @@ public class SaltReturnHandlerRegistryTest {
         registry.handlerMap.put("module.function", handler1);
         registry.handlerMap.put("module", handler2);
 
-        Assert.assertSame(handler1, registry.getHandlerFor("module.function", handler3));
+        Assert.assertSame("Expected most specific handler to be returned", handler1, registry.getHandlerFor("module.function", handler3));
     }
 
     @Test
@@ -85,7 +85,7 @@ public class SaltReturnHandlerRegistryTest {
         registry.handlerMap.put("module.function", handler1);
         registry.handlerMap.put("module", handler2);
 
-        Assert.assertSame(handler2, registry.getHandlerFor("module.function2", handler3));
+        Assert.assertSame("Expected module level handler to be returned", handler2, registry.getHandlerFor("module.function2", handler3));
     }
 
     @Test
@@ -97,7 +97,7 @@ public class SaltReturnHandlerRegistryTest {
         registry.handlerMap.put("module.function", handler1);
         registry.handlerMap.put("module", handler2);
 
-        Assert.assertSame(handler3, registry.getHandlerFor("module2.function", handler3));
+        Assert.assertSame("Expected default handler to be returned", handler3, registry.getHandlerFor("module2.function", handler3));
     }
 
     @Test
@@ -105,8 +105,8 @@ public class SaltReturnHandlerRegistryTest {
         SaltReturnHandlerRegistry registry = new SaltReturnHandlerRegistry(null);
         registry.configureFromResource("/testReturners.yaml");
 
-        Assert.assertEquals(1, registry.handlerMap.size());
-        Assert.assertTrue(registry.handlerMap.get("cmd") instanceof DefaultSaltReturnHandler);
+        Assert.assertEquals("Expected single returner to be registed", 1, registry.handlerMap.size());
+        Assert.assertTrue("Expected cmd returner to be a DefaultSaltReturnHandler", registry.handlerMap.get("cmd") instanceof DefaultSaltReturnHandler);
     }
 
     @Test
@@ -129,8 +129,8 @@ public class SaltReturnHandlerRegistryTest {
         SaltReturnHandlerRegistry registry = new SaltReturnHandlerRegistry(null);
         registry.configureFromFile(copyOfConfiguration.getAbsolutePath());
 
-        Assert.assertEquals(1, registry.handlerMap.size());
-        Assert.assertTrue(registry.handlerMap.get("cmd") instanceof DefaultSaltReturnHandler);
+        Assert.assertEquals("Expected single returner to be registed", 1, registry.handlerMap.size());
+        Assert.assertTrue("Expected cmd returner to be a DefaultSaltReturnHandler", registry.handlerMap.get("cmd") instanceof DefaultSaltReturnHandler);
     }
 
     @Test(expected = IllegalStateException.class)

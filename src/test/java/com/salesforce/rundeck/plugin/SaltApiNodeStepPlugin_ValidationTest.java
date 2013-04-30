@@ -17,7 +17,7 @@ import com.salesforce.rundeck.plugin.validation.Validators;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(Validators.class)
 public class SaltApiNodeStepPlugin_ValidationTest extends AbstractSaltApiNodeStepPluginTest {
-    
+
     @Test
     public void testValidateAllArguments() throws SaltStepValidationException {
         PowerMockito.mockStatic(Validators.class);
@@ -58,7 +58,7 @@ public class SaltApiNodeStepPlugin_ValidationTest extends AbstractSaltApiNodeSte
             plugin.validate(PARAM_USER, PARAM_PASSWORD, node);
             Assert.fail("Expected exception");
         } catch (SaltStepValidationException ne) {
-            Assert.assertSame(e, ne);
+            Assert.assertSame("Expected mocked exception to be thrown", e, ne);
         }
     }
 
@@ -81,8 +81,10 @@ public class SaltApiNodeStepPlugin_ValidationTest extends AbstractSaltApiNodeSte
             plugin.validate(PARAM_USER, PARAM_PASSWORD, node);
             Assert.fail("Expected failure.");
         } catch (SaltStepValidationException e) {
-            Assert.assertEquals(SaltApiNodeStepFailureReason.ARGUMENTS_INVALID, e.getFailureReason());
-            Assert.assertEquals(SaltApiNodeStepPlugin.SALT_API_END_POINT_OPTION_NAME, e.getFieldName());
+            Assert.assertEquals("Expected correct failure type due to validation failure",
+                    SaltApiNodeStepFailureReason.ARGUMENTS_INVALID, e.getFailureReason());
+            Assert.assertEquals("Expected field name to be filled out properly",
+                    SaltApiNodeStepPlugin.SALT_API_END_POINT_OPTION_NAME, e.getFieldName());
         }
     }
 }

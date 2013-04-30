@@ -20,7 +20,8 @@ public class SaltApiNodeStepPlugin_AuthenticateTest extends AbstractSaltApiNodeS
     public void testAuthenticateWithOkResponseCode() throws IOException, HttpException {
         setupAuthenticationHeadersOnPost(HttpStatus.SC_OK);
 
-        Assert.assertEquals(AUTH_TOKEN, plugin.authenticate(latestCapability, client, PARAM_USER, PARAM_PASSWORD));
+        Assert.assertEquals("Expected authentication to return correct auth token", AUTH_TOKEN,
+                plugin.authenticate(latestCapability, client, PARAM_USER, PARAM_PASSWORD));
 
         assertThatAuthenticationAttemptedSuccessfully();
     }
@@ -29,7 +30,8 @@ public class SaltApiNodeStepPlugin_AuthenticateTest extends AbstractSaltApiNodeS
     public void testAuthenticateFailure() throws IOException, HttpException {
         setupResponseCode(post, HttpStatus.SC_UNAUTHORIZED);
 
-        Assert.assertNull(plugin.authenticate(latestCapability, client, PARAM_USER, PARAM_PASSWORD));
+        Assert.assertNull("Expected authentication failure returning null",
+                plugin.authenticate(latestCapability, client, PARAM_USER, PARAM_PASSWORD));
 
         assertThatAuthenticationAttemptedSuccessfully();
     }

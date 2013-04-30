@@ -25,16 +25,18 @@ public class SaltApiNodeStepPlugin_0_7_5_Test extends AbstractSaltApiNodeStepPlu
     public void testAuthenticateWithRedirectResponseCode() throws IOException, HttpException {
         setupAuthenticationHeadersOnPost(HttpStatus.SC_MOVED_TEMPORARILY);
 
-        Assert.assertEquals(AUTH_TOKEN, plugin.authenticate(legacyCapability, client, PARAM_USER, PARAM_PASSWORD));
+        Assert.assertEquals("Expected authentication to return correct auth token", AUTH_TOKEN,
+                plugin.authenticate(legacyCapability, client, PARAM_USER, PARAM_PASSWORD));
 
         assertThatAuthenticationAttemptedSuccessfully();
     }
-    
+
     @Test
     public void testAuthenticateFailure() throws IOException, HttpException {
         setupResponseCode(post, HttpStatus.SC_INTERNAL_SERVER_ERROR);
 
-        Assert.assertNull(plugin.authenticate(legacyCapability, client, PARAM_USER, PARAM_PASSWORD));
+        Assert.assertNull("Expected authentication failure returning null",
+                plugin.authenticate(legacyCapability, client, PARAM_USER, PARAM_PASSWORD));
 
         assertThatAuthenticationAttemptedSuccessfully();
     }

@@ -28,11 +28,11 @@ public class SaltJsonReturnHandlerTest {
         String err = "some error";
         String json = String.format(SAMPLE_JSON_TEMPLATE, exitCode, out, err);
         SaltReturnResponse response = handler.extractResponse(json);
-        Assert.assertEquals(exitCode, response.getExitCode());
-        Assert.assertEquals(1, response.getStandardOutput().size());
-        Assert.assertEquals(out, response.getStandardOutput().get(0));
-        Assert.assertEquals(1, response.getStandardError().size());
-        Assert.assertEquals(err, response.getStandardError().get(0));
+        Assert.assertEquals("Expected passed in exit code", exitCode, response.getExitCode());
+        Assert.assertEquals("Expected single stdout line.", 1, response.getStandardOutput().size());
+        Assert.assertEquals("Expected passed in stdout line", out, response.getStandardOutput().get(0));
+        Assert.assertEquals("Expected single stderr line", 1, response.getStandardError().size());
+        Assert.assertEquals("Expected passed in stderr line", err, response.getStandardError().get(0));
     }
     
     @Test
@@ -44,9 +44,9 @@ public class SaltJsonReturnHandlerTest {
         String err = "some error";
         String json = String.format(SAMPLE_JSON_TEMPLATE, exitCode, out, err);
         SaltReturnResponse response = handler.extractResponse(json);
-        Assert.assertNull(response.getExitCode());
-        Assert.assertTrue(response.getStandardOutput().isEmpty());
-        Assert.assertTrue(response.getStandardError().isEmpty());
+        Assert.assertNull("Expected not to parse exit code", response.getExitCode());
+        Assert.assertTrue("Expected not to parse stdout", response.getStandardOutput().isEmpty());
+        Assert.assertTrue("Expected not to parse stderr", response.getStandardError().isEmpty());
     }
     
     @Test(expected = SaltReturnResponseParseException.class)
@@ -98,7 +98,7 @@ public class SaltJsonReturnHandlerTest {
         String key = "key";
         String value = "value";
         data.put(key, value);
-        Assert.assertEquals(value, handler.extractOrDie(key, data));
+        Assert.assertEquals("Expected handler to extract keyed value", value, handler.extractOrDie(key, data));
     }
 
     @Test(expected = SaltReturnResponseParseException.class)

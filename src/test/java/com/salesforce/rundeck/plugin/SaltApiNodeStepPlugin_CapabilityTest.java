@@ -23,7 +23,8 @@ public class SaltApiNodeStepPlugin_CapabilityTest extends AbstractSaltApiNodeSte
         SaltApiCapability capability = new SaltApiCapability();
         Mockito.when(registry.getLatest()).thenReturn(capability);
 
-        Assert.assertSame(capability, plugin.getSaltApiCapability());
+        Assert.assertSame("Expected unset version to return latest known capability", capability,
+                plugin.getSaltApiCapability());
     }
 
     @Test
@@ -32,7 +33,8 @@ public class SaltApiNodeStepPlugin_CapabilityTest extends AbstractSaltApiNodeSte
         SaltApiCapability capability = new SaltApiCapability();
         Mockito.when(registry.getLatest()).thenReturn(capability);
 
-        Assert.assertSame(capability, plugin.getSaltApiCapability());
+        Assert.assertSame("Expected blank version to return latest known capability", capability,
+                plugin.getSaltApiCapability());
     }
 
     @Test
@@ -42,6 +44,7 @@ public class SaltApiNodeStepPlugin_CapabilityTest extends AbstractSaltApiNodeSte
         SaltApiCapability capability = new SaltApiCapability();
         Mockito.when(registry.getCapability(version)).thenReturn(capability);
 
-        Assert.assertSame(capability, plugin.getSaltApiCapability());
+        Assert.assertSame("Expected set version to return registered capability", capability,
+                plugin.getSaltApiCapability());
     }
 }

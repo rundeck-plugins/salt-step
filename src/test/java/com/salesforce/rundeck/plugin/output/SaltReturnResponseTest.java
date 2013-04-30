@@ -16,9 +16,9 @@ public class SaltReturnResponseTest {
         response.addOutput(output2);
 
         List<String> output = response.getStandardOutput();
-        Assert.assertEquals(2, output.size());
-        Assert.assertEquals(output1, output.get(0));
-        Assert.assertEquals(output2, output.get(1));
+        Assert.assertEquals("Expected passed in stdout lines", 2, output.size());
+        Assert.assertEquals("Expected output line in order", output1, output.get(0));
+        Assert.assertEquals("Expected output line in order", output2, output.get(1));
     }
     
     @Test
@@ -27,7 +27,7 @@ public class SaltReturnResponseTest {
         response.addOutput(null);
         response.addOutput("");
 
-        Assert.assertTrue(response.getStandardOutput().isEmpty());
+        Assert.assertTrue("Expected empty line to be filtered out.", response.getStandardOutput().isEmpty());
     }
 
     @Test(expected = UnsupportedOperationException.class)
@@ -44,9 +44,9 @@ public class SaltReturnResponseTest {
         response.addError(error2);
 
         List<String> error = response.getStandardError();
-        Assert.assertEquals(2, error.size());
-        Assert.assertEquals(error1, error.get(0));
-        Assert.assertEquals(error2, error.get(1));
+        Assert.assertEquals("Expected passed in stderr lines", 2, error.size());
+        Assert.assertEquals("Expected error line in order", error1, error.get(0));
+        Assert.assertEquals("Expected error line in order", error2, error.get(1));
     }
     
     @Test
@@ -55,7 +55,7 @@ public class SaltReturnResponseTest {
         response.addError(null);
         response.addError("");
 
-        Assert.assertTrue(response.getStandardError().isEmpty());
+        Assert.assertTrue("Expected empty line to be filtered out.", response.getStandardError().isEmpty());
     }
 
     @Test(expected = UnsupportedOperationException.class)

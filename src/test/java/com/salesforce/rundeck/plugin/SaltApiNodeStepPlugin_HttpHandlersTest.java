@@ -27,19 +27,20 @@ public class SaltApiNodeStepPlugin_HttpHandlersTest {
     public void testCloseResource() {
         HttpEntity entity = Mockito.mock(HttpEntity.class);
         plugin.closeResource(entity);
-        
+
         PowerMockito.verifyStatic(Mockito.times(1));
         EntityUtils.consumeQuietly(Mockito.same(entity));
     }
-    
+
     @Test
     public void testExtractBodyFromEntity() throws Exception {
         HttpEntity entity = Mockito.mock(HttpEntity.class);
         String body = "some body";
         PowerMockito.doReturn(body).when(EntityUtils.class);
         EntityUtils.toString(Mockito.same(entity));
-        
-        Assert.assertSame(body, plugin.extractBodyFromEntity(entity));
+
+        Assert.assertSame("Expected body to be extracted from entity correctly", body,
+                plugin.extractBodyFromEntity(entity));
     }
 
 }
