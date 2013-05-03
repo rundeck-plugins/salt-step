@@ -150,6 +150,16 @@ public class ArgumentParserTest {
     }
     
     @Test
+    public void testParseMultiline() {
+        List<String> args = new ArgumentParser("\\s", new char[] { '\'', '"' }, '\\')
+                .parse("file.append /tmp/some_script.sh \"#! /bin/bash -x \nfor i in `ls /tmp`; do\n  ls -la /tmp/$i\ndone\"");
+        Assert.assertEquals(3, args.size());
+        Assert.assertEquals("file.append", args.get(0));
+        Assert.assertEquals("/tmp/some_script.sh", args.get(1));
+        Assert.assertEquals("#! /bin/bash -x \nfor i in `ls /tmp`; do\n  ls -la /tmp/$i\ndone", args.get(2));
+    }
+    
+    @Test
     public void testParseEmptyString() {
         Assert.assertEquals(0, new ArgumentParser("\\s").parse("").size());
     }
