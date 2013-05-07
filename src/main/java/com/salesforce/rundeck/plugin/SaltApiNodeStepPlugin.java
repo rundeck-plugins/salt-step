@@ -31,6 +31,7 @@ import com.dtolabs.rundeck.core.plugins.Plugin;
 import com.dtolabs.rundeck.plugins.ServiceNameConstants;
 import com.dtolabs.rundeck.plugins.descriptions.PluginDescription;
 import com.dtolabs.rundeck.plugins.descriptions.PluginProperty;
+import com.dtolabs.rundeck.plugins.descriptions.TextArea;
 import com.dtolabs.rundeck.plugins.step.NodeStepPlugin;
 import com.dtolabs.rundeck.plugins.step.PluginStepContext;
 import com.google.common.collect.Lists;
@@ -112,6 +113,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     @PluginProperty(title = SALT_API_VERSION_OPTION_NAME, description = "Salt Api version", required = false)
     protected String saltApiVersion;
 
+    @TextArea
     @PluginProperty(title = SALT_API_FUNCTION_OPTION_NAME, description = "Function (including args) to invoke on salt minions", required = true)
     protected String function;
 
