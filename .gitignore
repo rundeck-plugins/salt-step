@@ -1,12 +1,12 @@
 salt-step.iws
-out
+/out
 rundeck-salt-plugin.iml
 .classpath
 .gradle
 .project
 .settings
-bin
-build
+/bin
+/build
 .idea
 salt-step.ipr
 salt-step.iml
