@@ -53,7 +53,7 @@ The salt-step plugins interact with salt and salt-api requesting json payloads a
 ###YAML Configuration File Format
 ```
 handlerMappings:
-  <salt module>[.<salt function>]: <java object implementing com.salesforce.rundeck.plugin.output.SaltReturnHandler>
+  <salt module>[.<salt function>]: <java object implementing org.rundeck.plugin.salt.output.SaltReturnHandler>
 ```
 
 Salt-step is configured in 2 different places:

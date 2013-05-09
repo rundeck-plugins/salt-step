@@ -12,7 +12,7 @@ apply from: 'gradle/cobertura.gradle'
 description 'This plugin provides the ability execute tasks on salt masters'
 eclipse.project.name = "${name}"
 
-ext.pluginClassNames = 'com.salesforce.rundeck.plugin.SaltApiNodeStepPlugin'
+ext.pluginClassNames = 'org.rundeck.plugin.salt.SaltApiNodeStepPlugin'
 
 repositories {
     mavenLocal()

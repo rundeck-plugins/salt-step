@@ -1,6 +1,6 @@
 ---
 
-defaultCommandParser: &defaultCommandParser !!com.salesforce.rundeck.plugin.output.DefaultSaltReturnHandler { exitCode: 0 }
+defaultCommandParser: &defaultCommandParser !!org.rundeck.plugin.salt.output.DefaultSaltReturnHandler { exitCode: 0 }
 
 handlerMappings:
     cmd: *defaultCommandParser
