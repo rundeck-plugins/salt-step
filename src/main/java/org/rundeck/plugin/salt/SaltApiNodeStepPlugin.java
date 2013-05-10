@@ -186,6 +186,8 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
 
         try {
             SaltApiCapability capability = getSaltApiCapability();
+            logWrapper.debug("Using salt-api version: [%s]", capability);
+            
             HttpClient client = httpFactory.createHttpClient();
             String authToken = authenticate(capability, client, user, password);
 
@@ -195,9 +197,11 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
             }
 
             String dispatchedJid = submitJob(client, authToken, entry.getNodename());
+            logWrapper.info("Received jid [%s] for submitted job", dispatchedJid);
             String jobOutput = waitForJidResponse(client, authToken, dispatchedJid, entry.getNodename());
             SaltReturnHandler handler = returnHandlerRegistry.getHandlerFor(function.split(" ", 2)[0],
                     defaultReturnHandler);
+            logWrapper.debug("Using [%s] as salt's response handler", handler);
             SaltReturnResponse response = handler.extractResponse(jobOutput);
 
             for (String out : response.getStandardOutput()) {
@@ -254,15 +258,16 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         post.setHeader(SALT_AUTH_TOKEN_HEADER, authToken);
         post.setHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
         post.setEntity(postEntity);
-        HttpResponse response = retryExecutor.execute(logWrapper, client, post, numRetries,
-                Predicates.<Integer> alwaysFalse());
+        HttpResponse response = retryExecutor.execute(logWrapper, client, post, numRetries, Predicates.<Integer>alwaysFalse());
+        
+        logWrapper.debug("Submitting job with arguments [%s]", params);
+        logWrapper.info("Submitting job with salt-api endpoint: [%s]", post.getURI());
 
         int statusCode = response.getStatusLine().getStatusCode();
         HttpEntity entity = response.getEntity();
         try {
             String entityResponse = extractBodyFromEntity(entity);
             if (statusCode != HttpStatus.SC_ACCEPTED) {
-
                 throw new HttpException(String.format("Expected response code %d, received %d. %s",
                         HttpStatus.SC_ACCEPTED, statusCode, entityResponse));
             } else {
@@ -316,6 +321,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
             if (response != null) {
                 return response;
             }
+            logWrapper.debug("No response received, waiting...");
             timer.waitForNext();
         } while (true);
     }
@@ -337,6 +343,8 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         get.setHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
         HttpResponse response = retryExecutor.execute(logWrapper, client, get, numRetries);
 
+        logWrapper.info("Polling for job status with salt-api endpoint: [%s]", get.getURI());
+        
         try {
             if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
                 HttpEntity entity = response.getEntity();
@@ -394,6 +402,8 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                 return input != capability.getLoginFailureResponseCode();
             }
         });
+        
+        logWrapper.info("Authenticating with salt-api endpoint: [%s]", post.getURI());
 
         try {
             int responseCode = response.getStatusLine().getStatusCode();
