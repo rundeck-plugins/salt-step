@@ -7,7 +7,6 @@ import org.mockito.Mockito;
 import org.rundeck.plugin.salt.version.SaltApiCapability;
 import org.rundeck.plugin.salt.version.SaltApiVersionCapabilityRegistry;
 
-
 public class SaltApiNodeStepPlugin_CapabilityTest extends AbstractSaltApiNodeStepPluginTest {
 
     protected SaltApiVersionCapabilityRegistry registry;

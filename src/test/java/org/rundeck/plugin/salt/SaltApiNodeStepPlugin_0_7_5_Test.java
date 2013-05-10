@@ -3,8 +3,11 @@ package org.rundeck.plugin.salt;
 import junit.framework.Assert;
 
 import org.apache.http.HttpStatus;
+import org.apache.http.client.HttpClient;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
+import org.rundeck.plugin.salt.output.SaltReturnResponse;
 
 public class SaltApiNodeStepPlugin_0_7_5_Test extends AbstractSaltApiNodeStepPlugin_BackwardsCompatabilityTest {
 
@@ -36,5 +39,18 @@ public class SaltApiNodeStepPlugin_0_7_5_Test extends AbstractSaltApiNodeStepPlu
                 plugin.authenticate(legacyCapability, client, PARAM_USER, PARAM_PASSWORD));
 
         assertThatAuthenticationAttemptedSuccessfully(legacyCapability);
+    }
+    
+    @Test
+    public void testDoesNotAttemptToLogout() throws Exception {
+        setupAuthenticate();
+        Mockito.doReturn("foo").when(plugin).submitJob(Mockito.any(HttpClient.class), Mockito.anyString(), Mockito.anyString());
+        Mockito.doReturn("foo").when(plugin).waitForJidResponse(Mockito.any(HttpClient.class), Mockito.anyString(), Mockito.anyString(), Mockito.anyString());
+        SaltReturnResponse response = new SaltReturnResponse();
+        response.setExitCode(0);
+        Mockito.doReturn(response).when(returnHandler).extractResponse(Mockito.anyString());
+
+        plugin.executeNodeStep(pluginContext, configuration, node);
+        Mockito.verify(plugin, Mockito.never()).logoutQuietly(Mockito.any(HttpClient.class), Mockito.anyString());
     }
 }

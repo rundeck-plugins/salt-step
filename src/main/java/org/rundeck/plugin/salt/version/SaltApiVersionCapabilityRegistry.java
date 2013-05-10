@@ -4,6 +4,7 @@ import java.util.Comparator;
 import java.util.SortedMap;
 
 import org.apache.http.HttpStatus;
+import org.rundeck.plugin.salt.version.SaltApiCapability.Builder;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Maps;
@@ -19,8 +20,8 @@ public class SaltApiVersionCapabilityRegistry {
             .withLoginFailureResponseCode(HttpStatus.SC_INTERNAL_SERVER_ERROR).build();
 
     public static final String VERSION_0_8_0_NAME = "0.8.0";
-    public static final SaltApiCapability VERSION_0_8_0 = new SaltApiCapability.Builder().from(VERSION_0_7_5)
-            .withLoginFailureResponseCode(HttpStatus.SC_UNAUTHORIZED).withLoginSuccessResponseCode(HttpStatus.SC_OK)
+    public static final SaltApiCapability VERSION_0_8_0 = Builder.from(VERSION_0_7_5)
+            .withLoginFailureResponseCode(HttpStatus.SC_UNAUTHORIZED).withLoginSuccessResponseCode(HttpStatus.SC_OK).supportsLogout()
             .build();
 
     protected SortedMap<String, SaltApiCapability> versionRegistry;

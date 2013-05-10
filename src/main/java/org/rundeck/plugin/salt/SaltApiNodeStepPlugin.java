@@ -84,6 +84,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     protected static final String LOGIN_RESOURCE = "/login";
     protected static final String MINION_RESOURCE = "/minions";
     protected static final String JOBS_RESOURCE = "/jobs";
+    protected static final String LOGOUT_RESOURCE = "/logout";
     protected static final String SALT_AUTH_TOKEN_HEADER = "X-Auth-Token";
     protected static final String CHAR_SET_ENCODING = "UTF-8";
     protected static final String REQUEST_CONTENT_TYPE = "application/x-www-form-urlencoded";
@@ -209,6 +210,10 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                 throw new NodeStepException(String.format("Execution failed on minion with exit code %d",
                         response.getExitCode()), SaltApiNodeStepFailureReason.EXIT_CODE, entry.getNodename());
             }
+            
+            if (capability.getSupportsLogout()) {
+                logoutQuietly(client, authToken);
+            }
         } catch (SaltReturnResponseParseException e) {
             throw new NodeStepException(e, SaltApiNodeStepFailureReason.SALT_API_FAILURE, entry.getNodename());
         } catch (InterruptedException e) {
@@ -223,14 +228,14 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
             throw new NodeStepException(e, SaltApiNodeStepFailureReason.COMMUNICATION_FAILURE, entry.getNodename());
         }
     }
-
+    
     /**
      * Submits the job to salt-api using the class function and args.
      * 
      * @return the jid of the submitted job
      * @throws HttpException
      *             if there was a communication failure with salt-api
-     * @throws InterruptedException 
+     * @throws InterruptedException
      */
     protected String submitJob(HttpClient client, String authToken, String minionId) throws HttpException, IOException,
             SaltApiException, SaltTargettingMismatchException, InterruptedException {
@@ -249,7 +254,8 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         post.setHeader(SALT_AUTH_TOKEN_HEADER, authToken);
         post.setHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
         post.setEntity(postEntity);
-        HttpResponse response = retryExecutor.execute(logWrapper, client, post, numRetries, Predicates.<Integer>alwaysFalse());
+        HttpResponse response = retryExecutor.execute(logWrapper, client, post, numRetries,
+                Predicates.<Integer> alwaysFalse());
 
         int statusCode = response.getStatusLine().getStatusCode();
         HttpEntity entity = response.getEntity();
@@ -321,7 +327,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
      * @throws SaltApiException
      *             if the salt-api response does not conform to the expected
      *             format.
-     * @throws InterruptedException 
+     * @throws InterruptedException
      */
     protected String extractOutputForJid(HttpClient client, String authToken, String jid, String minionId)
             throws IOException, SaltApiException, InterruptedException {
@@ -363,15 +369,15 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
      * against the salt-api endpoint
      * 
      * @param capability
-     *            The {@link SaltApiCapability} that describes the supported features of the saltEndpoint
+     *            The {@link SaltApiCapability} that describes the supported features of the saltEndpoint 
      * @param user
      *            The user to auth with
      * @param password
      *            The password for the given user
      * @return X-Auth-Token for use in subsequent requests
      */
-    protected String authenticate(final SaltApiCapability capability, HttpClient client, String user, String password)
-            throws IOException, HttpException, InterruptedException {
+    protected String authenticate(final SaltApiCapability capability, HttpClient client, String user, String password) throws IOException, HttpException,
+            InterruptedException {
         List<NameValuePair> params = Lists.newArrayListWithCapacity(3);
         params.add(new BasicNameValuePair(SALT_API_USERNAME_PARAM_NAME, user));
         params.add(new BasicNameValuePair(SALT_API_PASSWORD_PARAM_NAME, password));
@@ -402,6 +408,23 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         } finally {
             closeResource(response.getEntity());
             post.releaseConnection();
+        }
+    }
+
+    protected void logoutQuietly(HttpClient client, String authToken) {
+        String logoutResource = String.format("%s%s", saltEndpoint, LOGOUT_RESOURCE);
+        HttpGet get = httpFactory.createHttpGet(logoutResource);
+        get.setHeader(SALT_AUTH_TOKEN_HEADER, authToken);
+        
+        logWrapper.info("Logging out with salt-api endpoint: [%s]", get.getURI());
+        
+        try {
+            retryExecutor.execute(logWrapper, client, get, numRetries);
+        } catch (IOException e) {
+            logWrapper.warn("Encountered exception (%s) while trying to logout. Ignoring...", e.getMessage());
+        } catch (InterruptedException e) {
+            logWrapper.warn("Interrupted while trying to logout.");
+            Thread.currentThread().interrupt();
         }
     }
 

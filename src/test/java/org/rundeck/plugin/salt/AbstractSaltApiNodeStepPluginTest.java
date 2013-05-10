@@ -238,7 +238,7 @@ public abstract class AbstractSaltApiNodeStepPluginTest {
     @SuppressWarnings({ "rawtypes", "unchecked" })
     protected void assertThatAuthenticationAttemptedSuccessfully(SaltApiCapability capability) {
         try {
-            Assert.assertEquals("Expected correct login endpoing to be used", PARAM_ENDPOINT + "/login", post.getURI()
+            Assert.assertEquals("Expected correct login endpoint to be used", PARAM_ENDPOINT + "/login", post.getURI()
                     .toString());
             assertPostBody("username=%s&password=%s&eauth=%s", PARAM_USER, PARAM_PASSWORD, PARAM_EAUTH);
 
