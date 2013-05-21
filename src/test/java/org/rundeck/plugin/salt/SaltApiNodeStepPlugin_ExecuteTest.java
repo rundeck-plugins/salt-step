@@ -113,9 +113,6 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
         setupDoReturnHostResponseWhenWaitForResponse();
         setupDoReturnSaltResponseWhenExtractResponse(0, new String[0], new String[0]);
 
-        SaltApiCapability capability = new SaltApiCapability();
-        Mockito.when(plugin.getSaltApiCapability()).thenReturn(capability);
-
         plugin.executeNodeStep(pluginContext, configuration, node);
         Mockito.verify(plugin, Mockito.times(1)).logoutQuietly(Mockito.any(HttpClient.class),
                 Mockito.eq(AUTH_TOKEN));
