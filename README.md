@@ -3,53 +3,54 @@
 
 ##Description
 
-A Rundeck NodeStepPlugin that allows Rundeck to delegate tasks to a Salt master by executing the request over salt-api.
+A Rundeck <a href="http://rundeck.org/docs/developer/workflow-step-plugin-development.html#workflow-node-step-plugin">NodeStepPlugin</a> that allows Rundeck to delegate tasks to a Salt master by executing the request over <a href="https://github.com/saltstack/salt-api">salt-api</a>.
 
 ##Build / Deploy
 
-- To build the project from source issue: `./gradlew clean build`
-- The resulting jar files can be found under build/libs. 
-- Copy the rundeck-salt-plugin-<version>.jar file to your $RDECK_BASE/libext folder
+- To build the project from source, issue: `./gradlew clean build`
+- The resulting jar files can be found under `build/libs`. 
+- Copy the `rundeck-salt-plugin-<version>.jar` file to your `$RDECK_BASE/libext` folder
 - Restart Rundeck
 - You should now have an additional "salt remote" option when configuring jobs
 
 ##Configuration
 
-- Rundeck node resource IDs MUST match salt minion IDs
+- Rundeck node resource IDs *MUST* match salt minion IDs
 
 ##Usage
 
-The following two job-level params should be configured to provide authentication input fields:
+The following job-level params must be configured to provide authentication input fields:
 
-- SALT_USER - standard input field, required.
-- SALT_PASSWORD - secure input field, required. *NOTE this should *not* be secure remote authentication*
+- `SALT_USER` - standard input field, required.
+- `SALT_PASSWORD` - secure input field, required. *NOTE the option should *not* be set as a secure remote authentication option*
 
-In addition:
+Additionally:
 - Workflow configuration must be set to dispatch to nodes.
 
 ###Remote execution over salt-api
 
-*NOTE: This plugin leverages salt-api, which requires it's own additional setup. For more information on how to setup salt-api please refer to it's documentation which can be found here: http://salt-api.readthedocs.org/en/latest/* 
+*NOTE: This plugin leverages salt-api, which requires its own additional setup. For more information on how to setup salt-api please refer to its documentation which can be found <a href="http://salt-api.readthedocs.org/en/latest/">here</a>.* 
 
-The remote execution salt plugin provides three properties which need to be configured for the step:
+This plugin requires three properties that need to be configured for each step:
 
-- SALT_API_END_POINT: the URL of the salt-api endpoint, ie: https://piab1-saltm1-1-piab.ops.sfdc.net:8000
-- Function: the function to be passed to salt-api call, minus the target 
--- For example, if you entered `test.ping` for the function value, the resulting salt call would be `salt <yourHostName> test.ping` this field would simply contain `test.ping`. The target will always default to the hostname where Rundeck is running.
-- SALT_API_EAUTH: the authentication mechanism salt-api should use
--- This would be the equivalent to the -a parameter being passed on the command line, for example `salt -a pam <target> test.ping`
-- SALT_API_VERSION (optional): the version of salt-api that is running. Assumed latest if none provided.
+- `SALT_API_END_POINT`: the URL of the salt-api endpoint (e.g. https://localhost:8000)
+- `Function`: the function to be passed to the salt-api call (excluding the target) 
+-- For example, if you enter `test.ping` for the function value, the resulting salt call will be `salt <​yourHostName>​ test.ping`. The target will always default to the hostname of the Rundeck server. 
+- `SALT_API_EAUTH`: the authenticati​on mechanism that should be used by salt-api
+-- This would be the equivalent to the `-a` parameter being passed on the command line 	(e.g. `salt -a pam <target> test.ping`)
+- `SALT_API_VERSION` (optional): The expected version of salt-api. Defaults to latest if left blank.
 
 
 ##Troubleshooting
 
-- Make sure that your salt-api setup is fully functional before attempting to execute jobs with this plugin
-- Setting the job output level to debug will print out the raw JSON commands that are being sent as well as the returned output
-- Make sure the API endpoint is correct, remember to check http vs https
+- Ensure that your salt-api setup is fully functional before attempting to execute jobs with this plugin
+- Set the job output level to `debug` to print the raw JSON data and returned output
+- Ensure the API endpoint is correct
+-- http vs https
 
 ##Setting up salt return response parsers
 ===================
-The salt-step plugins interact with salt and salt-api requesting json payloads as output by default. Salt-step needs to be configured in order to parse this output and behave correctly with respect to exit codes, standard output, and standard error. Salt-step is configured through yaml configuration files.
+This plugin interacts with salt and salt-api. By default, it requests JSON payloads. YAML configuratio​n files are used to determine how it should parse the output and behave with respect to exit codes, standard output, and standard error.
 
 ###YAML Configuration File Format
 ```
@@ -57,6 +58,34 @@ handlerMappings:
   <salt module>[.<salt function>]: <java object implementing org.rundeck.plugin.salt.output.SaltReturnHandler>
 ```
 
-Salt-step is configured in 2 different places:
+Salt-step is configured in two locations:
 * ```src/main/resources/defaultReturners.yaml```
-* In rundeck-config.properties, the _saltStep.returnHandlers_ property allows for a comma separated list of additional configuration files.
+* `​rundeck-​config.​properties`: The `_saltStep.​return​Handlers_` property accepts a comma separated list of additional configuratio​n files
+
+##Developer Guidelines
+
+Thanks for contributing to the project!
+
+###Code style
+* Same line braces.
+* 4 spaces for tabs.
+* Clarity over brevity.
+* When in doubt, follow what's already there.
+
+###Javadocs
+* At the very minimum, please ensure that class-level and method-level javadocs are present.
+
+###Unit tests
+* While we don't expect 100% coverage, we do expect repeatable, automated tests.
+* Include unit tests that confirm that your change performs as expected (e.g. new feature or bug fix).
+
+###Before submitting a pull request
+* Merge the latest development branch before submitting a pull request.
+* Perform a build (`./gradlew clean build`) and confirm that all tests are passing.
+* Ensure that all documentation (e.g. `README.md` or other supporting links) is updated.
+* Rebase changes into as few commits as makes sense.
+* Ensure that all commit messages accurately describe the changes.
+
+###​Submitting a pull request
+* Submit a pull request to the development branch of this project.
+* Ensure that the pull request has a clear description of the included changes.
