@@ -284,11 +284,11 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         post.setHeader(SALT_AUTH_TOKEN_HEADER, authToken);
         post.setHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
         post.setEntity(postEntity);
-        HttpResponse response = retryExecutor.execute(logWrapper, client, post, numRetries, Predicates.<Integer>alwaysFalse());
         
         logWrapper.debug("Submitting job with arguments [%s]", params);
         logWrapper.info("Submitting job with salt-api endpoint: [%s]", post.getURI());
-
+        HttpResponse response = retryExecutor.execute(logWrapper, client, post, numRetries, Predicates.<Integer>alwaysFalse());
+        
         int statusCode = response.getStatusLine().getStatusCode();
         HttpEntity entity = response.getEntity();
         try {
@@ -367,9 +367,9 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         HttpGet get = httpFactory.createHttpGet(jidResource);
         get.setHeader(SALT_AUTH_TOKEN_HEADER, authToken);
         get.setHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
-        HttpResponse response = retryExecutor.execute(logWrapper, client, get, numRetries);
-
+        
         logWrapper.info("Polling for job status with salt-api endpoint: [%s]", get.getURI());
+        HttpResponse response = retryExecutor.execute(logWrapper, client, get, numRetries);
         
         try {
             if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
@@ -422,14 +422,14 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
 
         HttpPost post = httpFactory.createHttpPost(saltEndpoint + LOGIN_RESOURCE);
         post.setEntity(postEntity);
+        
+        logWrapper.info("Authenticating with salt-api endpoint: [%s]", post.getURI());
         HttpResponse response = retryExecutor.execute(logWrapper, client, post, numRetries, new Predicate<Integer>() {
             @Override
             public boolean apply(Integer input) {
                 return input != capability.getLoginFailureResponseCode();
             }
         });
-        
-        logWrapper.info("Authenticating with salt-api endpoint: [%s]", post.getURI());
 
         try {
             int responseCode = response.getStatusLine().getStatusCode();
