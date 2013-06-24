@@ -37,14 +37,16 @@ The remote execution salt plugin provides three properties which need to be conf
 - SALT_API_END_POINT: the URL of the salt-api endpoint, ie: https://piab1-saltm1-1-piab.ops.sfdc.net:8000
 - Function: the function to be passed to salt-api call, minus the target 
 -- For example, if you entered `test.ping` for the function value, the resulting salt call would be `salt <yourHostName> test.ping` this field would simply contain `test.ping`. The target will always default to the hostname where Rundeck is running.
-- Eauth: the authentication mechanism salt-api should use
+- SALT_API_EAUTH: the authentication mechanism salt-api should use
 -- This would be the equivalent to the -a parameter being passed on the command line, for example `salt -a pam <target> test.ping`
+- SALT_API_VERSION (optional): the version of salt-api that is running. Assumed latest if none provided.
+
 
 ##Troubleshooting
 
 - Make sure that your salt-api setup is fully functional before attempting to execute jobs with this plugin
 - Setting the job output level to debug will print out the raw JSON commands that are being sent as well as the returned output
-- Make sure the API endpoint is correct, renmember to check http vs https
+- Make sure the API endpoint is correct, remember to check http vs https
 
 ##Setting up salt return response parsers
 ===================
