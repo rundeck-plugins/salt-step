@@ -3,8 +3,7 @@
 
 ##Description
 
-A Rundeck NodeStepPlugin that allows Rundeck to delegate tasks to a Salt master, either by issuing a salt command 
-on the same host as Rundeck is running or by executing the request over salt-api.
+A Rundeck NodeStepPlugin that allows Rundeck to delegate tasks to a Salt master by executing the request over salt-api.
 
 ##Build / Deploy
 
