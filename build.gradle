@@ -1,0 +1,89 @@
+/**
+ * The Rundeck salt plugin build file
+ */
+import org.gradle.api.internal.GradleInternal
+import org.gradle.api.internal.project.ProjectInternal
+
+apply plugin: 'java';
+apply plugin: 'eclipse';
+apply plugin: 'idea';
+apply from: 'gradle/cobertura.gradle'
+
+description 'This plugin provides the ability execute tasks on salt masters'
+eclipse.project.name = "${name}"
+
+ext.pluginClassNames = 'org.rundeck.plugin.salt.SaltApiNodeStepPlugin'
+
+repositories {
+    mavenLocal()
+    maven {
+        url mavenCentralUrl
+	if (project.hasProperty('mavenUser') && project.hasProperty('mavenPassword')) {
+		credentials {
+			username mavenUser
+			password mavenPassword
+		}
+	}
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '1.4'
+}
+
+defaultTasks 'test', 'testCoberturaReport', 'assemble'
+
+sourceCompatibility = 1.6
+targetCompatibility = 1.6
+
+// produce a jar file for our source files
+task sourceJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.java
+}
+
+// add all of the artifacts above to our archives list
+artifacts {
+    archives sourceJar
+}
+
+configurations {
+    pluginCompile
+    compile {
+        extendsFrom pluginCompile
+    }
+    compile.exclude module: 'commons-httpclient'
+}
+
+dependencies {
+    compile (
+        'org.rundeck:rundeck-core:1.5+'
+    ) 
+    pluginCompile (
+        'com.google.code.gson:gson:2.2.2',
+        'com.google.guava:guava:14.0',
+        'commons-validator:commons-validator:1.4.0',
+        'org.springframework:spring-context:3.2.2.RELEASE',
+        'org.apache.httpcomponents:httpclient:4.2.4',
+        'org.apache.commons:commons-io:1.3.2',
+        'com.google.code.findbugs:jsr305:2.0.1'
+    )
+    testCompile (
+        'junit:junit:4.11',
+        'org.mockito:mockito-all:1.9.5',
+        'org.powermock:powermock-module-junit4:1.5',
+        'org.powermock:powermock-api-mockito:1.5'
+    )
+}
+
+def packagedJars = configurations.runtime.files.collect { "$it.name" }.join(" ")
+jar {
+    manifest {
+        attributes 'Rundeck-Plugin-Version': rundeckPluginVersion,
+            'Rundeck-Plugin-Archive': 'true',
+            'Rundeck-Plugin-File-Version': version,
+            'Rundeck-Plugin-Classnames': pluginClassNames,
+            'Rundeck-Plugin-Libs': packagedJars
+    }
+    from configurations.pluginCompile
+}

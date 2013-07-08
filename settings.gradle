@@ -1,0 +1,2 @@
+// Change default name to be more descriptive (used in places like artifact names)
+rootProject.name = 'rundeck-salt-plugin'
