@@ -80,12 +80,12 @@ Thanks for contributing to the project!
 * Include unit tests that confirm that your change performs as expected (e.g. new feature or bug fix).
 
 ###Before submitting a pull request
-* Merge the latest development branch before submitting a pull request.
+* Merge the latest master branch before submitting a pull request.
 * Perform a build (`./gradlew clean build`) and confirm that all tests are passing.
 * Ensure that all documentation (e.g. `README.md` or other supporting links) is updated.
 * Rebase changes into as few commits as makes sense.
 * Ensure that all commit messages accurately describe the changes.
 
 ###​Submitting a pull request
-* Submit a pull request to the development branch of this project.
+* Submit a pull request to the master branch of this project.
 * Ensure that the pull request has a clear description of the included changes.
