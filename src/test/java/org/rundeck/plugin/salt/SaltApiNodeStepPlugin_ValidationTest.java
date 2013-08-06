@@ -26,15 +26,13 @@
 
 package org.rundeck.plugin.salt;
 
-import junit.framework.Assert;
-
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-import org.rundeck.plugin.salt.SaltApiNodeStepPlugin;
 import org.rundeck.plugin.salt.SaltApiNodeStepPlugin.SaltApiNodeStepFailureReason;
 import org.rundeck.plugin.salt.validation.SaltStepValidationException;
 import org.rundeck.plugin.salt.validation.Validators;

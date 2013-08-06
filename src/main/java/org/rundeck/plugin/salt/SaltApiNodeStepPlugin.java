@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
@@ -79,6 +80,7 @@ import com.dtolabs.rundeck.plugins.step.NodeStepPlugin;
 import com.dtolabs.rundeck.plugins.step.PluginStepContext;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -104,6 +106,8 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     }
 
     public static final String SERVICE_PROVIDER_NAME = "salt-api-exec";
+    
+    protected static final String SECURE_OPTION_VALUE = "****";
 
     protected static final String[] VALID_SALT_API_END_POINT_SCHEMES = { "http", "https" };
 
@@ -132,13 +136,14 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
 
     // -- Option names expected to be passed in from rundeck --
     protected static final String RUNDECK_DATA_CONTEXT_OPTION_KEY = "option";
+    protected static final String RUNDECK_SECURE_DATA_CONTEXT_OPTION_KEY = "secureOption";
     protected static final String SALT_API_END_POINT_OPTION_NAME = "SALT_API_END_POINT";
     protected static final String SALT_API_VERSION_OPTION_NAME = "SALT_API_VERSION";
     protected static final String SALT_API_FUNCTION_OPTION_NAME = "Function";
     protected static final String SALT_API_EAUTH_OPTION_NAME = "SALT_API_EAUTH";
     protected static final String SALT_USER_OPTION_NAME = "SALT_USER";
     protected static final String SALT_PASSWORD_OPTION_NAME = "SALT_PASSWORD";
-
+    
     @PluginProperty(title = SALT_API_END_POINT_OPTION_NAME, description = "Salt Api end point", required = true, defaultValue = "${option."
             + SALT_API_END_POINT_OPTION_NAME + "}")
     protected String saltEndpoint;
@@ -222,7 +227,8 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                         SaltApiNodeStepFailureReason.AUTHENTICATION_FAILURE, entry.getNodename());
             }
 
-            String dispatchedJid = submitJob(client, authToken, entry.getNodename());
+            Set<String> secureData = extractSecureDataFromDataContext(context.getDataContext());
+            String dispatchedJid = submitJob(client, authToken, entry.getNodename(), secureData);
             logWrapper.info("Received jid [%s] for submitted job", dispatchedJid);
             String jobOutput = waitForJidResponse(client, authToken, dispatchedJid, entry.getNodename());
             SaltReturnHandler handler = returnHandlerRegistry.getHandlerFor(function.split(" ", 2)[0],
@@ -260,6 +266,20 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     }
     
     /**
+     * @return collection of secure data values from data context.
+     */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    protected Set<String> extractSecureDataFromDataContext(Map dataContext) {
+        Map<String, String> secureContext = (Map<String, String>) dataContext.get(RUNDECK_SECURE_DATA_CONTEXT_OPTION_KEY);
+        if (secureContext != null) {
+            return ImmutableSet.copyOf(secureContext.values());
+        }
+        else {
+            return ImmutableSet.of();
+        }
+    }
+    
+    /**
      * Submits the job to salt-api using the class function and args.
      * 
      * @return the jid of the submitted job
@@ -267,14 +287,22 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
      *             if there was a communication failure with salt-api
      * @throws InterruptedException
      */
-    protected String submitJob(HttpClient client, String authToken, String minionId) throws HttpException, IOException,
+    protected String submitJob(HttpClient client, String authToken, String minionId, Set<String> secureData) throws HttpException, IOException,
             SaltApiException, SaltTargettingMismatchException, InterruptedException {
         List<NameValuePair> params = Lists.newArrayList();
         List<String> args = ArgumentParser.DEFAULT_ARGUMENT_SPLITTER.parse(function);
         params.add(new BasicNameValuePair(SALT_API_FUNCTION_PARAM_NAME, args.get(0)));
         params.add(new BasicNameValuePair(SALT_API_TARGET_PARAM_NAME, minionId));
+        
+        List<NameValuePair> printableParams = Lists.newArrayList();
+        printableParams.addAll(params);
         for (int i = 1; i < args.size(); i++) {
-            params.add(new BasicNameValuePair(SALT_API_ARGUMENTS_PARAM_NAME, args.get(i)));
+            String value = args.get(i);
+            params.add(new BasicNameValuePair(SALT_API_ARGUMENTS_PARAM_NAME, value));
+            for (String s : secureData) {
+                value = value.replaceAll(s, SECURE_OPTION_VALUE);
+            }
+            printableParams.add(new BasicNameValuePair(SALT_API_ARGUMENTS_PARAM_NAME, value));
         }
         UrlEncodedFormEntity postEntity = new UrlEncodedFormEntity(params, CHAR_SET_ENCODING);
         postEntity.setContentEncoding(CHAR_SET_ENCODING);
@@ -285,7 +313,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         post.setHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
         post.setEntity(postEntity);
         
-        logWrapper.debug("Submitting job with arguments [%s]", params);
+        logWrapper.debug("Submitting job with arguments [%s]", printableParams);
         logWrapper.info("Submitting job with salt-api endpoint: [%s]", post.getURI());
         HttpResponse response = retryExecutor.execute(logWrapper, client, post, numRetries, Predicates.<Integer>alwaysFalse());
         

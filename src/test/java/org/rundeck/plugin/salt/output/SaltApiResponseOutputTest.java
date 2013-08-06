@@ -28,12 +28,11 @@ package org.rundeck.plugin.salt.output;
 
 import java.util.List;
 
-import junit.framework.Assert;
-
+import org.junit.Assert;
 import org.junit.Test;
-import org.rundeck.plugin.salt.output.SaltApiResponseOutput;
 
 import com.google.common.collect.Lists;
+
 
 public class SaltApiResponseOutputTest {
 
