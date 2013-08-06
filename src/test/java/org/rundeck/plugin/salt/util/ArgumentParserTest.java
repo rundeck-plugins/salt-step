@@ -28,10 +28,8 @@ package org.rundeck.plugin.salt.util;
 
 import java.util.List;
 
-import junit.framework.Assert;
-
+import org.junit.Assert;
 import org.junit.Test;
-import org.rundeck.plugin.salt.util.ArgumentParser;
 
 public class ArgumentParserTest {
 

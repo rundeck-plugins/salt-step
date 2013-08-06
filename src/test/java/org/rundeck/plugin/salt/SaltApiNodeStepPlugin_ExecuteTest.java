@@ -26,16 +26,15 @@
 
 package org.rundeck.plugin.salt;
 
-import junit.framework.Assert;
+import java.util.Set;
 
 import org.apache.http.HttpException;
 import org.apache.http.client.HttpClient;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
-import org.rundeck.plugin.salt.SaltApiException;
-import org.rundeck.plugin.salt.SaltTargettingMismatchException;
 import org.rundeck.plugin.salt.SaltApiNodeStepPlugin.SaltApiNodeStepFailureReason;
 import org.rundeck.plugin.salt.output.SaltReturnResponse;
 import org.rundeck.plugin.salt.output.SaltReturnResponseParseException;
@@ -43,6 +42,7 @@ import org.rundeck.plugin.salt.validation.SaltStepValidationException;
 import org.rundeck.plugin.salt.version.SaltApiCapability;
 
 import com.dtolabs.rundeck.core.execution.workflow.steps.node.NodeStepException;
+import com.google.common.collect.ImmutableSet;
 
 public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPluginTest {
 
@@ -104,6 +104,20 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
         plugin.executeNodeStep(pluginContext, configuration, node);
         Mockito.verify(plugin, Mockito.times(1)).authenticate(Mockito.same(capability), Mockito.any(HttpClient.class),
                 Mockito.anyString(), Mockito.anyString());
+    }
+    
+    @Test
+    public void testExecuteInvokesWithCorrectSecureOptions() throws Exception {
+        setupAuthenticate();
+        setupDoReturnJidWhenSubmitJob();
+        setupDoReturnHostResponseWhenWaitForResponse();
+        setupDoReturnSaltResponseWhenExtractResponse(0, new String[0], new String[0]);
+
+        Set<String> secureOptions = ImmutableSet.of();
+        Mockito.doReturn(secureOptions).when(plugin).extractSecureDataFromDataContext(Mockito.same(dataContext));
+
+        plugin.executeNodeStep(pluginContext, configuration, node);
+        Mockito.verify(plugin, Mockito.times(1)).submitJob(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(PARAM_MINION_NAME), Mockito.same(secureOptions));
     }
     
     @Test
@@ -310,7 +324,7 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
     protected SaltApiNodeStepPlugin_ExecuteTest setupDoReturnJidWhenSubmitJob() {
         try {
             Mockito.doReturn(OUTPUT_JID).when(plugin)
-                    .submitJob(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(PARAM_MINION_NAME));
+                    .submitJob(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(PARAM_MINION_NAME), Mockito.anySet());
             return this;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -320,7 +334,7 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
     protected SaltApiNodeStepPlugin_ExecuteTest setupDoThrowWhenSubmitJob(Throwable t) {
         try {
             Mockito.doThrow(t).when(plugin)
-                    .submitJob(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(PARAM_MINION_NAME));
+                    .submitJob(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(PARAM_MINION_NAME), Mockito.anySet());
             return this;
         } catch (Exception e) {
             throw new RuntimeException(e);
