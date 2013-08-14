@@ -300,7 +300,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
             String value = args.get(i);
             params.add(new BasicNameValuePair(SALT_API_ARGUMENTS_PARAM_NAME, value));
             for (String s : secureData) {
-                value = value.replaceAll(s, SECURE_OPTION_VALUE);
+                value = StringUtils.replace(value, s, SECURE_OPTION_VALUE);
             }
             printableParams.add(new BasicNameValuePair(SALT_API_ARGUMENTS_PARAM_NAME, value));
         }
