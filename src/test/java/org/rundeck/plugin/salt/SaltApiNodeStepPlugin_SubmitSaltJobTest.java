@@ -161,7 +161,11 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
     @SuppressWarnings({ "unchecked", "rawtypes" })
     @Test
     public void testSubmitJobHidesSecureOptions() throws Exception {
-        String secret = "bar";
+        String secret = "greatgooglymoogly5f5DEyIKEyde\n" + 
+"wjXpeCuqX89nAaGwjSphBZsjlQldheNDra1+FqOJfBaKK3Zr1FKe5mr1si\n\n" +
+"QCqCM11FLV2/jdMS/c7aMwfhBvapN2Rh76LBRysm\n\n" + 
+"LV0prx1jqbdb8/UyxTyMlfJpRtn09wy+rL\n\n" + 
+"f6qGO+Srwiy5/7lgNFJ7t3xT1w5NA==\n";
         Set<String> secureOptions = ImmutableSet.of(secret);
         secureOptionContext.put("foo", secret);
         
