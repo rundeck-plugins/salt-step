@@ -37,41 +37,46 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.rundeck.plugin.salt.output.SaltApiResponseOutput;
+import org.rundeck.plugin.salt.version.SaltInteractionHandler;
 
 import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNodeStepPluginTest {
 
     protected static final String MINIONS_ENDPOINT = String.format("%s/minions", PARAM_ENDPOINT);
-    protected static final String MINION_JSON_RESPONSE = String.format("[{\"return\": {\"jid\": \"%s\", \"minions\": [\"%s\"]}}]",
-                                                                       OUTPUT_JID, PARAM_MINION_NAME);
-
+    
     @Before
     public void setup() throws Exception {
         spyPlugin();
+        latestCapability = Mockito.spy(latestCapability);
+        Mockito.when(plugin.getSaltApiCapability()).thenReturn(latestCapability);
     }
 
     @Test
     public void testSubmitJob() throws Exception {
-        setupResponse(post, HttpStatus.SC_ACCEPTED, MINION_JSON_RESPONSE);
+        setupGoodSaltApiResponse();
+        setupResponseCode(post, HttpStatus.SC_ACCEPTED);
 
         Assert.assertEquals("Expected mocked jid after submitting job", OUTPUT_JID,
-                            plugin.submitJob(client, AUTH_TOKEN, PARAM_MINION_NAME, ImmutableSet.<String> of()));
+                            plugin.submitJob(latestCapability, client, AUTH_TOKEN, PARAM_MINION_NAME, ImmutableSet.<String> of()));
 
         assertThatSubmitSaltJobAttemptedSuccessfully();
     }
 
     @Test
     public void testSubmitJobWithArgs() throws Exception {
-        setupResponse(post, HttpStatus.SC_ACCEPTED, MINION_JSON_RESPONSE);
+        setupGoodSaltApiResponse();
+        setupResponseCode(post, HttpStatus.SC_ACCEPTED);
 
         String arg1 = "sdf%33&";
         String arg2 = "adsf asdf";
         plugin.function = String.format("%s \"%s\" \"%s\"", PARAM_FUNCTION, arg1, arg2);
 
         Assert.assertEquals("Expected mocked jid after submitting job", OUTPUT_JID,
-                            plugin.submitJob(client, AUTH_TOKEN, PARAM_MINION_NAME, ImmutableSet.<String> of()));
+                            plugin.submitJob(latestCapability, client, AUTH_TOKEN, PARAM_MINION_NAME, ImmutableSet.<String> of()));
 
         assertThatSubmitSaltJobAttemptedSuccessfully("fun=%s&tgt=%s&arg=%s&arg=%s", PARAM_FUNCTION, PARAM_MINION_NAME,
                                                      arg1, arg2);
@@ -79,10 +84,10 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
 
     @Test
     public void testSubmitJobResponseCodeError() throws Exception {
-        setupResponse(post, HttpStatus.SC_TEMPORARY_REDIRECT, MINION_JSON_RESPONSE);
+        setupResponseCode(post, HttpStatus.SC_TEMPORARY_REDIRECT);
 
         try {
-            plugin.submitJob(client, AUTH_TOKEN, PARAM_MINION_NAME, ImmutableSet.<String> of());
+            plugin.submitJob(latestCapability, client, AUTH_TOKEN, PARAM_MINION_NAME, ImmutableSet.<String> of());
             Assert.fail("Expected http exception due to bad response code.");
         }
         catch (HttpException e) {
@@ -94,11 +99,12 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
 
     @Test
     public void testSubmitJobNoMinionsMatched() throws Exception {
-        String output = "[{\"return\": {}}]";
-        setupResponse(post, HttpStatus.SC_ACCEPTED, output);
+        SaltApiResponseOutput response = new SaltApiResponseOutput();
+        setupSaltApiResponse(response);
+        setupResponseCode(post, HttpStatus.SC_ACCEPTED);
 
         try {
-            plugin.submitJob(client, AUTH_TOKEN, PARAM_MINION_NAME, ImmutableSet.<String> of());
+            plugin.submitJob(latestCapability, client, AUTH_TOKEN, PARAM_MINION_NAME, ImmutableSet.<String> of());
             Assert.fail("Expected targetting mismatch exception.");
         }
         catch (SaltTargettingMismatchException e) {
@@ -110,11 +116,14 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
 
     @Test
     public void testSubmitJobMinionCountMismatch() throws Exception {
-        String output = String.format("[{\"return\": {\"jid\": \"%s\", \"minions\": []}}]", OUTPUT_JID);
-        setupResponse(post, HttpStatus.SC_ACCEPTED, output);
+        SaltApiResponseOutput response = Mockito.mock(SaltApiResponseOutput.class);
+        List<String> minions = ImmutableList.of("foo", "bar");
+        Mockito.when(response.getMinions()).thenReturn(minions);
+        setupSaltApiResponse(response);
+        setupResponseCode(post, HttpStatus.SC_ACCEPTED);
 
         try {
-            plugin.submitJob(client, AUTH_TOKEN, PARAM_MINION_NAME, ImmutableSet.<String> of());
+            plugin.submitJob(latestCapability, client, AUTH_TOKEN, PARAM_MINION_NAME, ImmutableSet.<String> of());
             Assert.fail("Expected targetting mismatch exception.");
         }
         catch (SaltTargettingMismatchException e) {
@@ -125,30 +134,15 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
     }
 
     @Test
-    public void testSubmitJobMultipleResponses() throws Exception {
-        String output = String.format("[{\"return\": {\"jid\": \"%s\", \"minions\": [\"SomeOtherMinion\"]}},{}]",
-                                      OUTPUT_JID);
-        setupResponse(post, HttpStatus.SC_ACCEPTED, output);
-
-        try {
-            plugin.submitJob(client, AUTH_TOKEN, PARAM_MINION_NAME, ImmutableSet.<String> of());
-            Assert.fail("Expected salt-api response exception.");
-        }
-        catch (SaltApiException e) {
-            // expected
-        }
-
-        assertThatSubmitSaltJobAttemptedSuccessfully();
-    }
-
-    @Test
     public void testSubmitJobMinionIdMismatch() throws Exception {
-        String output = String.format("[{\"return\": {\"jid\": \"%s\", \"minions\": [\"SomeOtherMinion\"]}}]",
-                                      OUTPUT_JID);
-        setupResponse(post, HttpStatus.SC_ACCEPTED, output);
+        SaltApiResponseOutput response = Mockito.mock(SaltApiResponseOutput.class);
+        List<String> minions = ImmutableList.of("someotherhost");
+        Mockito.when(response.getMinions()).thenReturn(minions);
+        setupSaltApiResponse(response);
+        setupResponseCode(post, HttpStatus.SC_ACCEPTED);
 
         try {
-            plugin.submitJob(client, AUTH_TOKEN, PARAM_MINION_NAME, ImmutableSet.<String> of());
+            plugin.submitJob(latestCapability, client, AUTH_TOKEN, PARAM_MINION_NAME, ImmutableSet.<String> of());
             Assert.fail("Expected targetting mismatch exception.");
         }
         catch (SaltTargettingMismatchException e) {
@@ -172,8 +166,9 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
         String command = "cmd.run";
         plugin.function = String.format("%s 'echo %s'", command, secret);
         
-        setupResponse(post, HttpStatus.SC_ACCEPTED, MINION_JSON_RESPONSE);
-        plugin.submitJob(client, AUTH_TOKEN, PARAM_MINION_NAME, secureOptions);
+        setupGoodSaltApiResponse();
+        setupResponseCode(post, HttpStatus.SC_ACCEPTED);
+        plugin.submitJob(latestCapability, client, AUTH_TOKEN, PARAM_MINION_NAME, secureOptions);
         
         ArgumentCaptor<List> argCaptor = ArgumentCaptor.forClass(List.class);
         Mockito.verify(log, Mockito.times(1)).debug(Mockito.eq("Submitting job with arguments [%s]"), argCaptor.capture());
@@ -239,5 +234,19 @@ public class SaltApiNodeStepPlugin_SubmitSaltJobTest extends AbstractSaltApiNode
         catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+    
+    protected void setupSaltApiResponse(SaltApiResponseOutput output) throws SaltApiException {
+        SaltInteractionHandler interactionHandler = Mockito.mock(SaltInteractionHandler.class);
+        Mockito.when(latestCapability.getSaltInteractionHandler()).thenReturn(interactionHandler);
+        Mockito.when(interactionHandler.extractOutputForJobSubmissionResponse(Mockito.anyString())).thenReturn(output);
+    }
+    
+    protected void setupGoodSaltApiResponse() throws SaltApiException {
+        SaltApiResponseOutput output = Mockito.mock(SaltApiResponseOutput.class);
+        List<String> minions = ImmutableList.of(PARAM_MINION_NAME);
+        Mockito.when(output.getMinions()).thenReturn(minions);
+        Mockito.when(output.getJid()).thenReturn(OUTPUT_JID);
+        setupSaltApiResponse(output);
     }
 }

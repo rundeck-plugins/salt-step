@@ -43,6 +43,11 @@ public class SaltApiCapability implements Cloneable {
             }
             return builder;
         }
+        
+        public Builder withId(String id) {
+            origin.id = id;
+            return this;
+        }
 
         public Builder withLoginFailureResponseCode(int newLoginFailureResponseCode) {
             origin.loginFailureResponseCode = newLoginFailureResponseCode;
@@ -59,14 +64,25 @@ public class SaltApiCapability implements Cloneable {
             return this;
         }
         
+        public Builder withSaltInteractionHandler(SaltInteractionHandler interactionHandler) {
+            origin.interactionHandler = interactionHandler;
+            return this;
+        }
+        
         public SaltApiCapability build() {
             return origin;
         }
     }
 
+    private String id;
     private int loginSuccessResponseCode;
     private int loginFailureResponseCode;
     private boolean supportsLogout = false;
+    private SaltInteractionHandler interactionHandler;
+    
+    public String getId() {
+        return id;
+    }
 
     public int getLoginFailureResponseCode() {
         return loginFailureResponseCode;
@@ -78,5 +94,9 @@ public class SaltApiCapability implements Cloneable {
     
     public boolean getSupportsLogout() {
         return supportsLogout;
+    }
+    
+    public SaltInteractionHandler getSaltInteractionHandler() {
+        return interactionHandler;
     }
 }

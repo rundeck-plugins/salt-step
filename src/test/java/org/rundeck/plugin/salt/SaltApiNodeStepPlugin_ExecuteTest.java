@@ -98,11 +98,8 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
         setupDoReturnHostResponseWhenWaitForResponse();
         setupDoReturnSaltResponseWhenExtractResponse(0, new String[0], new String[0]);
 
-        SaltApiCapability capability = new SaltApiCapability();
-        Mockito.when(plugin.getSaltApiCapability()).thenReturn(capability);
-
         plugin.executeNodeStep(pluginContext, configuration, node);
-        Mockito.verify(plugin, Mockito.times(1)).authenticate(Mockito.same(capability), Mockito.any(HttpClient.class),
+        Mockito.verify(plugin, Mockito.times(1)).authenticate(Mockito.same(latestCapability), Mockito.any(HttpClient.class),
                 Mockito.anyString(), Mockito.anyString());
     }
     
@@ -115,9 +112,9 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
 
         Set<String> secureOptions = ImmutableSet.of();
         Mockito.doReturn(secureOptions).when(plugin).extractSecureDataFromDataContext(Mockito.same(dataContext));
-
+        
         plugin.executeNodeStep(pluginContext, configuration, node);
-        Mockito.verify(plugin, Mockito.times(1)).submitJob(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(PARAM_MINION_NAME), Mockito.same(secureOptions));
+        Mockito.verify(plugin, Mockito.times(1)).submitJob(Mockito.same(latestCapability), Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(PARAM_MINION_NAME), Mockito.same(secureOptions));
     }
     
     @Test
@@ -324,7 +321,7 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
     protected SaltApiNodeStepPlugin_ExecuteTest setupDoReturnJidWhenSubmitJob() {
         try {
             Mockito.doReturn(OUTPUT_JID).when(plugin)
-                    .submitJob(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(PARAM_MINION_NAME), Mockito.anySet());
+                    .submitJob(Mockito.same(latestCapability), Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(PARAM_MINION_NAME), Mockito.anySet());
             return this;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -334,7 +331,7 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
     protected SaltApiNodeStepPlugin_ExecuteTest setupDoThrowWhenSubmitJob(Throwable t) {
         try {
             Mockito.doThrow(t).when(plugin)
-                    .submitJob(Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(PARAM_MINION_NAME), Mockito.anySet());
+                    .submitJob(Mockito.same(latestCapability), Mockito.same(client), Mockito.eq(AUTH_TOKEN), Mockito.eq(PARAM_MINION_NAME), Mockito.anySet());
             return this;
         } catch (Exception e) {
             throw new RuntimeException(e);

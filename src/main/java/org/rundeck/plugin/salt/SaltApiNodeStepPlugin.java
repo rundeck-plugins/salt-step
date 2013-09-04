@@ -64,6 +64,7 @@ import org.rundeck.plugin.salt.util.RetryingHttpClientExecutor;
 import org.rundeck.plugin.salt.validation.SaltStepValidationException;
 import org.rundeck.plugin.salt.version.SaltApiCapability;
 import org.rundeck.plugin.salt.version.SaltApiVersionCapabilityRegistry;
+import org.rundeck.plugin.salt.version.SaltInteractionHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -123,7 +124,6 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     protected static final String YAML_RESPONSE_ACCEPT_TYPE = "application/x-yaml";
 
     protected static final String SALT_OUTPUT_RETURN_KEY = "return";
-    protected static final Type MINION_RESPONSE_TYPE = new TypeToken<List<Map<String, Object>>>() {}.getType();
     protected static final Type JOB_RESPONSE_TYPE = new TypeToken<Map<String, List<Object>>>() {}.getType();
 
     // -- Parameter names for REST calls to salt-api --
@@ -228,7 +228,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
             }
 
             Set<String> secureData = extractSecureDataFromDataContext(context.getDataContext());
-            String dispatchedJid = submitJob(client, authToken, entry.getNodename(), secureData);
+            String dispatchedJid = submitJob(capability, client, authToken, entry.getNodename(), secureData);
             logWrapper.info("Received jid [%s] for submitted job", dispatchedJid);
             String jobOutput = waitForJidResponse(client, authToken, dispatchedJid, entry.getNodename());
             SaltReturnHandler handler = returnHandlerRegistry.getHandlerFor(function.split(" ", 2)[0],
@@ -287,7 +287,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
      *             if there was a communication failure with salt-api
      * @throws InterruptedException
      */
-    protected String submitJob(HttpClient client, String authToken, String minionId, Set<String> secureData) throws HttpException, IOException,
+    protected String submitJob(SaltApiCapability capability, HttpClient client, String authToken, String minionId, Set<String> secureData) throws HttpException, IOException,
             SaltApiException, SaltTargettingMismatchException, InterruptedException {
         List<NameValuePair> params = Lists.newArrayList();
         List<String> args = ArgumentParser.DEFAULT_ARGUMENT_SPLITTER.parse(function);
@@ -326,14 +326,8 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                         HttpStatus.SC_ACCEPTED, statusCode, entityResponse));
             } else {
                 logWrapper.debug("Received response for job submission = %s", response);
-                Gson gson = new Gson();
-                List<Map<String, Object>> responses = gson.fromJson(entityResponse, MINION_RESPONSE_TYPE);
-                if (responses.size() != 1) {
-                    throw new SaltApiException(String.format("Could not understand salt response %s", response));
-                }
-                Map<String, Object> responseMap = responses.get(0);
-                SaltApiResponseOutput saltOutput = gson.fromJson(responseMap.get(SALT_OUTPUT_RETURN_KEY).toString(),
-                        SaltApiResponseOutput.class);
+                SaltInteractionHandler interactionHandler = capability.getSaltInteractionHandler();
+                SaltApiResponseOutput saltOutput = interactionHandler.extractOutputForJobSubmissionResponse(entityResponse);
                 if (saltOutput.getMinions().size() != 1) {
                     throw new SaltTargettingMismatchException(String.format(
                             "Expected minion delegation count of 1, was %d. Full minion string: (%s)", saltOutput
