@@ -26,10 +26,9 @@
 
 package org.rundeck.plugin.salt;
 
-import junit.framework.Assert;
-
 import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpClient;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -70,7 +69,7 @@ public class SaltApiNodeStepPlugin_0_7_5_Test extends AbstractSaltApiNodeStepPlu
     @Test
     public void testDoesNotAttemptToLogout() throws Exception {
         setupAuthenticate();
-        Mockito.doReturn("foo").when(plugin).submitJob(Mockito.any(HttpClient.class), Mockito.anyString(), Mockito.anyString());
+        Mockito.doReturn("foo").when(plugin).submitJob(Mockito.same(legacyCapability), Mockito.any(HttpClient.class), Mockito.anyString(), Mockito.anyString(), Mockito.anySet());
         Mockito.doReturn("foo").when(plugin).waitForJidResponse(Mockito.any(HttpClient.class), Mockito.anyString(), Mockito.anyString(), Mockito.anyString());
         SaltReturnResponse response = new SaltReturnResponse();
         response.setExitCode(0);

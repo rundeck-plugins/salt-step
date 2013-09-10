@@ -26,14 +26,11 @@
 
 package org.rundeck.plugin.salt.validation;
 
-import junit.framework.Assert;
-
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.rundeck.plugin.salt.SaltApiNodeStepPlugin.SaltApiNodeStepFailureReason;
-import org.rundeck.plugin.salt.validation.SaltStepValidationException;
-import org.rundeck.plugin.salt.validation.Validators;
 
 import com.dtolabs.rundeck.core.common.INodeEntry;
 import com.dtolabs.rundeck.core.execution.workflow.steps.FailureReason;

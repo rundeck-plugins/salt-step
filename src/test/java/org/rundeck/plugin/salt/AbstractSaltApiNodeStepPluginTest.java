@@ -28,10 +28,7 @@ package org.rundeck.plugin.salt;
 
 import java.net.URI;
 import java.net.URLEncoder;
-import java.util.HashMap;
 import java.util.Map;
-
-import junit.framework.Assert;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.Header;
@@ -44,23 +41,24 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.message.BasicHeader;
+import org.junit.Assert;
 import org.junit.Before;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.rundeck.plugin.salt.SaltApiNodeStepPlugin;
 import org.rundeck.plugin.salt.output.SaltReturnHandler;
 import org.rundeck.plugin.salt.output.SaltReturnHandlerRegistry;
 import org.rundeck.plugin.salt.util.ExponentialBackoffTimer;
+import org.rundeck.plugin.salt.util.ExponentialBackoffTimer.Factory;
 import org.rundeck.plugin.salt.util.HttpFactory;
 import org.rundeck.plugin.salt.util.LogWrapper;
 import org.rundeck.plugin.salt.util.RetryingHttpClientExecutor;
-import org.rundeck.plugin.salt.util.ExponentialBackoffTimer.Factory;
 import org.rundeck.plugin.salt.version.SaltApiCapability;
 
 import com.dtolabs.rundeck.core.common.INodeEntry;
 import com.dtolabs.rundeck.plugins.PluginLogger;
 import com.dtolabs.rundeck.plugins.step.PluginStepContext;
 import com.google.common.base.Predicate;
+import com.google.common.collect.Maps;
 
 public abstract class AbstractSaltApiNodeStepPluginTest {
 
@@ -80,6 +78,7 @@ public abstract class AbstractSaltApiNodeStepPluginTest {
     protected Map<String, Object> configuration;
     protected Map<String, Map<String, String>> dataContext;
     protected Map<String, String> optionContext;
+    protected Map<String, String> secureOptionContext;
     protected PluginStepContext pluginContext;
     protected PluginLogger pluginLogger;
 
@@ -157,13 +156,15 @@ public abstract class AbstractSaltApiNodeStepPluginTest {
         Mockito.when(pluginContext.getLogger()).thenReturn(pluginLogger);
         node = Mockito.mock(INodeEntry.class);
         Mockito.when(node.getNodename()).thenReturn(PARAM_MINION_NAME);
-        configuration = new HashMap<String, Object>();
+        configuration = Maps.newHashMap();
 
-        dataContext = new HashMap<String, Map<String, String>>();
-        optionContext = new HashMap<String, String>();
+        dataContext = Maps.newHashMap();
+        optionContext = Maps.newHashMap();
+        secureOptionContext = Maps.newHashMap();
         optionContext.put(SaltApiNodeStepPlugin.SALT_USER_OPTION_NAME, PARAM_USER);
         optionContext.put(SaltApiNodeStepPlugin.SALT_PASSWORD_OPTION_NAME, PARAM_PASSWORD);
         dataContext.put(SaltApiNodeStepPlugin.RUNDECK_DATA_CONTEXT_OPTION_KEY, optionContext);
+        dataContext.put(SaltApiNodeStepPlugin.RUNDECK_SECURE_DATA_CONTEXT_OPTION_KEY, secureOptionContext);
         Mockito.when(pluginContext.getDataContext()).thenReturn(dataContext);
 
         timerFactory = Mockito.mock(Factory.class);

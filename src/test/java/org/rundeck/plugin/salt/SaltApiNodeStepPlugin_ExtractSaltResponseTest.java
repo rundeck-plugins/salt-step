@@ -26,14 +26,11 @@
 
 package org.rundeck.plugin.salt;
 
-import junit.framework.Assert;
-
 import org.apache.http.HttpStatus;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.rundeck.plugin.salt.SaltApiException;
-import org.rundeck.plugin.salt.SaltApiNodeStepPlugin;
 
 public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltApiNodeStepPluginTest {
 

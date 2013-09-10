@@ -26,10 +26,10 @@
 
 package org.rundeck.plugin.salt.util;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.rundeck.plugin.salt.util.LogWrapper;
 
 import com.dtolabs.rundeck.core.Constants;
 import com.dtolabs.rundeck.plugins.PluginLogger;
@@ -44,6 +44,7 @@ public class LogWrapperTest {
     public void setup() {
         underlyingLogger = Mockito.mock(PluginLogger.class);
         log = new LogWrapper(underlyingLogger);
+        log = Mockito.spy(log);
     }
 
     @Test
@@ -89,12 +90,27 @@ public class LogWrapperTest {
             }
         }, Constants.ERR_LEVEL);
     }
+    
+    @Test
+    public void testFormat() {
+        String line = "%sbar";
+        String arg = "foo";
+        String expected = String.format(line, arg);
+        Assert.assertEquals("Expected line to be formatted", expected, log.format(line, arg));
+    }
+    
+    @Test
+    public void testFormatDoesNotFormatBecauseNoArgumentsGiven() {
+        String line = "%sbar";
+        Assert.assertEquals("Expected line to be unformatted", line, log.format(line));
+    }
 
     protected void assertLineLoggedAt(Function<String[], Void> logFunction, int logLevel) {
         String logLine = "some log line %s";
         String args = "arg!";
-        String formattedLine = String.format(logLine, args);
+        String expectedLoggedLine = "foo log line!";
+        Mockito.doReturn(expectedLoggedLine).when(log).format(Mockito.eq(logLine), Mockito.eq(args));
         logFunction.apply(new String[] { logLine, args });
-        Mockito.verify(underlyingLogger, Mockito.times(1)).log(Mockito.eq(logLevel), Mockito.eq(formattedLine));
+        Mockito.verify(underlyingLogger, Mockito.times(1)).log(Mockito.eq(logLevel), Mockito.eq(expectedLoggedLine));
     }
 }
