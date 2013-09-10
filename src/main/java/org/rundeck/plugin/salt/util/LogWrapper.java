@@ -42,19 +42,28 @@ public class LogWrapper {
     }
 
     public void info(String string, Object... args) {
-        logger.log(Constants.INFO_LEVEL, String.format(string, args));
+        logger.log(Constants.INFO_LEVEL, format(string, args));
     }
 
     public void debug(String string, Object... args) {
-        logger.log(Constants.DEBUG_LEVEL, String.format(string, args));
+        logger.log(Constants.DEBUG_LEVEL, format(string, args));
     }
 
     public void warn(String string, Object... args) {
-        logger.log(Constants.WARN_LEVEL, String.format(string, args));
+        logger.log(Constants.WARN_LEVEL, format(string, args));
     }
 
     public void error(String string, Object... args) {
-        logger.log(Constants.ERR_LEVEL, String.format(string, args));
+        logger.log(Constants.ERR_LEVEL, format(string, args));
+    }
+
+    protected String format(String logLine, Object... args) {
+        if (args.length > 0) {
+            return String.format(logLine, args);
+        }
+        else {
+            return logLine;
+        }
     }
 
     @VisibleForTesting

@@ -40,14 +40,23 @@ import com.google.common.collect.Maps;
  */
 @Component
 public class SaltApiVersionCapabilityRegistry {
-    public static final String VERSION_0_7_5_NAME = "0.7.5";
     public static final SaltApiCapability VERSION_0_7_5 = new SaltApiCapability.Builder()
+            .withId("0.7.5")
             .withLoginSuccessResponseCode(HttpStatus.SC_MOVED_TEMPORARILY)
-            .withLoginFailureResponseCode(HttpStatus.SC_INTERNAL_SERVER_ERROR).build();
+            .withLoginFailureResponseCode(HttpStatus.SC_INTERNAL_SERVER_ERROR)
+            .withSaltInteractionHandler(new Pre082SaltInteractionHandler())
+            .build();
 
-    public static final String VERSION_0_8_0_NAME = "0.8.0";
     public static final SaltApiCapability VERSION_0_8_0 = Builder.from(VERSION_0_7_5)
-            .withLoginFailureResponseCode(HttpStatus.SC_UNAUTHORIZED).withLoginSuccessResponseCode(HttpStatus.SC_OK).supportsLogout()
+            .withId("0.8.0")
+            .withLoginFailureResponseCode(HttpStatus.SC_UNAUTHORIZED)
+            .withLoginSuccessResponseCode(HttpStatus.SC_OK)
+            .supportsLogout()
+            .build();
+    
+    public static final SaltApiCapability VERSION_0_8_2 = Builder.from(VERSION_0_8_0)
+            .withId("0.8.2")
+            .withSaltInteractionHandler(new LatestSaltInteractionHandler())
             .build();
 
     protected SortedMap<String, SaltApiCapability> versionRegistry;
@@ -59,8 +68,9 @@ public class SaltApiVersionCapabilityRegistry {
                 return arg1.compareTo(arg0);
             }
         });
-        register(VERSION_0_7_5_NAME, VERSION_0_7_5);
-        register(VERSION_0_8_0_NAME, VERSION_0_8_0);
+        register(VERSION_0_7_5);
+        register(VERSION_0_8_0);
+        register(VERSION_0_8_2);
     }
 
     /**
@@ -79,8 +89,8 @@ public class SaltApiVersionCapabilityRegistry {
         return versionRegistry.get(versionRegistry.firstKey());
     }
 
-    protected void register(String version, SaltApiCapability capability) {
-        versionRegistry.put(normalizeVersion(version), capability);
+    protected void register(SaltApiCapability capability) {
+        versionRegistry.put(normalizeVersion(capability.getId()), capability);
     }
 
     protected String normalizeVersion(String version) {

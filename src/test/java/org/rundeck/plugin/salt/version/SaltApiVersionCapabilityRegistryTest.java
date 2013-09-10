@@ -35,17 +35,17 @@ import org.rundeck.plugin.salt.version.SaltApiVersionCapabilityRegistry;
 public class SaltApiVersionCapabilityRegistryTest {
 
     protected SaltApiVersionCapabilityRegistry registry;
-    protected SaltApiCapability v_0_7_0 = new SaltApiCapability();
-    protected SaltApiCapability v_0_8_0 = new SaltApiCapability();
-    protected SaltApiCapability v_0_9_0 = new SaltApiCapability();
+    protected SaltApiCapability v_0_7_0 = new SaltApiCapability.Builder().withId("0.7.0").build();
+    protected SaltApiCapability v_0_8_0 = new SaltApiCapability.Builder().withId("0.8.0").build();
+    protected SaltApiCapability v_0_9_0 = new SaltApiCapability.Builder().withId("0.9.0").build();
 
     @Before
     public void setup() {
         registry = new SaltApiVersionCapabilityRegistry();
         registry.versionRegistry.clear();
-        registry.register("0.7.0", v_0_7_0);
-        registry.register("0.8.0", v_0_8_0);
-        registry.register("0.9.0", v_0_9_0);
+        registry.register(v_0_7_0);
+        registry.register(v_0_8_0);
+        registry.register(v_0_9_0);
     }
 
     @Test
