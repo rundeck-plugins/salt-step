@@ -364,12 +364,13 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     protected String waitForJidResponse(HttpClient client, String authToken, String jid, String minionId)
             throws IOException, InterruptedException, SaltApiException {
         ExponentialBackoffTimer timer = timerFactory.newTimer(delayStep, maximumRetryDelay);
+        String jidResource = String.format("%s%s/%s", saltEndpoint, JOBS_RESOURCE, jid);
+        logWrapper.info("Polling for job status with salt-api endpoint: [%s]", jidResource);
         do {
             String response = extractOutputForJid(client, authToken, jid, minionId);
             if (response != null) {
                 return response;
             }
-            logWrapper.debug("No response received, waiting...");
             timer.waitForNext();
         } while (true);
     }
@@ -390,14 +391,12 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         get.setHeader(SALT_AUTH_TOKEN_HEADER, authToken);
         get.setHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
         
-        logWrapper.info("Polling for job status with salt-api endpoint: [%s]", get.getURI());
         HttpResponse response = retryExecutor.execute(logWrapper, client, get, numRetries);
         
         try {
             if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
                 HttpEntity entity = response.getEntity();
                 String entityResponse = extractBodyFromEntity(entity);
-                logWrapper.debug("Received response for jobs/%s = %s", jid, response);
                 Gson gson = new Gson();
                 Map<String, List<Map<String, Object>>> result = gson.fromJson(entityResponse, JOB_RESPONSE_TYPE);
                 List<Map<String, Object>> responses = result.get(SALT_OUTPUT_RETURN_KEY);
@@ -406,6 +405,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                 } else if (responses.size() == 1) {
                     Map<String, Object> minionResponse = responses.get(0);
                     if (minionResponse.containsKey(minionId)) {
+                        logWrapper.debug("Received response for jobs/%s = %s", jid, response);
                         Object responseObj = minionResponse.get(minionId);
                         return gson.toJson(responseObj);
                     }
