@@ -26,8 +26,8 @@
 
 package org.rundeck.plugin.salt;
 
-import java.util.Set;
-
+import com.dtolabs.rundeck.core.execution.workflow.steps.node.NodeStepException;
+import com.google.common.collect.ImmutableSet;
 import org.apache.http.HttpException;
 import org.apache.http.client.HttpClient;
 import org.junit.Assert;
@@ -39,10 +39,8 @@ import org.rundeck.plugin.salt.SaltApiNodeStepPlugin.SaltApiNodeStepFailureReaso
 import org.rundeck.plugin.salt.output.SaltReturnResponse;
 import org.rundeck.plugin.salt.output.SaltReturnResponseParseException;
 import org.rundeck.plugin.salt.validation.SaltStepValidationException;
-import org.rundeck.plugin.salt.version.SaltApiCapability;
 
-import com.dtolabs.rundeck.core.execution.workflow.steps.node.NodeStepException;
-import com.google.common.collect.ImmutableSet;
+import java.util.Set;
 
 public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPluginTest {
 
@@ -270,6 +268,20 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
         } catch (NodeStepException e) {
             Assert.assertEquals("Expected failure reason to be set based on exception type",
                     SaltApiNodeStepFailureReason.COMMUNICATION_FAILURE, e.getFailureReason());
+        }
+    }
+
+    @Test
+    public void testExecuteWithUnsupportedEndPointScheme() {
+        setupAuthenticate();
+        plugin.setEndPointSchemes("https");
+
+        try {
+            plugin.executeNodeStep(pluginContext, configuration, node);
+            Assert.fail("Expected node step failure.");
+        } catch (NodeStepException e) {
+            Assert.assertEquals("Expected failure reason to be set based on exception type",
+                    SaltApiNodeStepFailureReason.ARGUMENTS_INVALID, e.getFailureReason());
         }
     }
 

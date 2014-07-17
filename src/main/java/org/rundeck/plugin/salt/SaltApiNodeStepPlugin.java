@@ -110,8 +110,6 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     
     protected static final String SECURE_OPTION_VALUE = "****";
 
-    protected static final String[] VALID_SALT_API_END_POINT_SCHEMES = { "http", "https" };
-
     protected static final String LOGIN_RESOURCE = "/login";
     protected static final String MINION_RESOURCE = "/minions";
     protected static final String JOBS_RESOURCE = "/jobs";
@@ -191,11 +189,19 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     @Value("${saltApi.http.numRetries}")
     protected int numRetries;
 
+    // Supported API protocols
+    protected String[] endPointSchemes;
+
     @Autowired
     protected ExponentialBackoffTimer.Factory timerFactory;
 
     public SaltApiNodeStepPlugin() {
         new DependencyInjectionUtil().inject(this);
+    }
+
+    @Autowired
+    public void setEndPointSchemes(@Value("${saltApi.endPointSchemes}") String epSchemes) throws IllegalArgumentException {
+        endPointSchemes = epSchemes.split(",");
     }
 
     @Override
@@ -353,7 +359,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         checkNotEmpty(SALT_USER_OPTION_NAME, user, SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, entry);
         checkNotEmpty(SALT_PASSWORD_OPTION_NAME, password, SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, entry);
 
-        UrlValidator urlValidator = new UrlValidator(VALID_SALT_API_END_POINT_SCHEMES, UrlValidator.ALLOW_LOCAL_URLS);
+        UrlValidator urlValidator = new UrlValidator(endPointSchemes, UrlValidator.ALLOW_LOCAL_URLS);
         if (!urlValidator.isValid(saltEndpoint)) {
             throw new SaltStepValidationException(SALT_API_END_POINT_OPTION_NAME, String.format(
                     "%s is not a valid endpoint.", saltEndpoint), SaltApiNodeStepFailureReason.ARGUMENTS_INVALID,
