@@ -52,6 +52,9 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
     @Test
     public void testExecuteWithAuthenticationFailure() {
         setupAuthenticate(null);
+        setupDoReturnJidWhenSubmitJob();
+        setupDoReturnHostResponseWhenWaitForResponse();
+        setupDoReturnSaltResponseWhenExtractResponse(0, new String[0], new String[0]);
 
         try {
             plugin.executeNodeStep(pluginContext, configuration, node);
@@ -79,6 +82,10 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
 
     @Test
     public void testExecuteWithDataContextMissing() {
+        setupAuthenticate();
+        setupDoReturnJidWhenSubmitJob();
+        setupDoReturnHostResponseWhenWaitForResponse();
+        setupDoReturnSaltResponseWhenExtractResponse(0, new String[0], new String[0]);
         dataContext.clear();
         try {
             plugin.executeNodeStep(pluginContext, configuration, node);
@@ -274,6 +281,10 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
     @Test
     public void testExecuteWithUnsupportedEndPointScheme() {
         setupAuthenticate();
+        setupDoReturnJidWhenSubmitJob();
+        setupDoReturnHostResponseWhenWaitForResponse();
+        setupDoReturnSaltResponseWhenExtractResponse(0, new String[0], new String[0]);
+
         plugin.setEndPointSchemes("https");
 
         try {
