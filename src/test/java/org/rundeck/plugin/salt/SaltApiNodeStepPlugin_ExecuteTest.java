@@ -82,6 +82,7 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
 
     @Test
     public void testExecuteWithDataContextMissing() {
+        setupAuthenticate();
         setupDoReturnJidWhenSubmitJob();
         setupDoReturnHostResponseWhenWaitForResponse();
         setupDoReturnSaltResponseWhenExtractResponse(0, new String[0], new String[0]);
