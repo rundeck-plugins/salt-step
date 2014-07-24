@@ -26,10 +26,11 @@
 
 package org.rundeck.plugin.salt;
 
-import java.net.URI;
-import java.net.URLEncoder;
-import java.util.Map;
-
+import com.dtolabs.rundeck.core.common.INodeEntry;
+import com.dtolabs.rundeck.plugins.PluginLogger;
+import com.dtolabs.rundeck.plugins.step.PluginStepContext;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Maps;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -54,15 +55,13 @@ import org.rundeck.plugin.salt.util.LogWrapper;
 import org.rundeck.plugin.salt.util.RetryingHttpClientExecutor;
 import org.rundeck.plugin.salt.version.SaltApiCapability;
 
-import com.dtolabs.rundeck.core.common.INodeEntry;
-import com.dtolabs.rundeck.plugins.PluginLogger;
-import com.dtolabs.rundeck.plugins.step.PluginStepContext;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Maps;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.util.Map;
 
 public abstract class AbstractSaltApiNodeStepPluginTest {
 
-    protected static final String PARAM_ENDPOINT = "http://localhost";
+    protected static final String PARAM_ENDPOINT = "https://localhost";
     protected static final String PARAM_EAUTH = "pam";
     protected static final String PARAM_MINION_NAME = "minion";
     protected static final String PARAM_FUNCTION = "some.function";
@@ -107,6 +106,7 @@ public abstract class AbstractSaltApiNodeStepPluginTest {
         plugin.saltEndpoint = PARAM_ENDPOINT;
         plugin.eAuth = PARAM_EAUTH;
         plugin.function = PARAM_FUNCTION;
+        plugin.setEndPointSchemes("https");
         latestCapability = plugin.capabilityRegistry.getLatest();
         client = Mockito.mock(HttpClient.class);
         post = Mockito.mock(HttpPost.class);
