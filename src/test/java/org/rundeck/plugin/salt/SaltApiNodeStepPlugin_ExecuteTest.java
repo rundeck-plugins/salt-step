@@ -285,7 +285,7 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
         setupDoReturnHostResponseWhenWaitForResponse();
         setupDoReturnSaltResponseWhenExtractResponse(0, new String[0], new String[0]);
 
-        plugin.setEndPointSchemes("https");
+        plugin.setEndPointSchemes("http");
 
         try {
             plugin.executeNodeStep(pluginContext, configuration, node);
