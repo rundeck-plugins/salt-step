@@ -110,8 +110,6 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     
     protected static final String SECURE_OPTION_VALUE = "****";
 
-    protected static final String[] VALID_SALT_API_END_POINT_SCHEMES = { "http", "https" };
-
     protected static final String LOGIN_RESOURCE = "/login";
     protected static final String MINION_RESOURCE = "/minions";
     protected static final String JOBS_RESOURCE = "/jobs";
@@ -191,11 +189,19 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     @Value("${saltApi.http.numRetries}")
     protected int numRetries;
 
+    // Supported API protocols
+    protected String[] endPointSchemes;
+
     @Autowired
     protected ExponentialBackoffTimer.Factory timerFactory;
 
     public SaltApiNodeStepPlugin() {
         new DependencyInjectionUtil().inject(this);
+    }
+
+    @Autowired
+    public void setEndPointSchemes(@Value("${saltApi.endPointSchemes}") String epSchemes) throws IllegalArgumentException {
+        endPointSchemes = epSchemes.split(",");
     }
 
     @Override
@@ -353,7 +359,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         checkNotEmpty(SALT_USER_OPTION_NAME, user, SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, entry);
         checkNotEmpty(SALT_PASSWORD_OPTION_NAME, password, SaltApiNodeStepFailureReason.ARGUMENTS_MISSING, entry);
 
-        UrlValidator urlValidator = new UrlValidator(VALID_SALT_API_END_POINT_SCHEMES, UrlValidator.ALLOW_LOCAL_URLS);
+        UrlValidator urlValidator = new UrlValidator(endPointSchemes, UrlValidator.ALLOW_LOCAL_URLS);
         if (!urlValidator.isValid(saltEndpoint)) {
             throw new SaltStepValidationException(SALT_API_END_POINT_OPTION_NAME, String.format(
                     "%s is not a valid endpoint.", saltEndpoint), SaltApiNodeStepFailureReason.ARGUMENTS_INVALID,
@@ -364,12 +370,13 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
     protected String waitForJidResponse(HttpClient client, String authToken, String jid, String minionId)
             throws IOException, InterruptedException, SaltApiException {
         ExponentialBackoffTimer timer = timerFactory.newTimer(delayStep, maximumRetryDelay);
+        String jidResource = String.format("%s%s/%s", saltEndpoint, JOBS_RESOURCE, jid);
+        logWrapper.info("Polling for job status with salt-api endpoint: [%s]", jidResource);
         do {
             String response = extractOutputForJid(client, authToken, jid, minionId);
             if (response != null) {
                 return response;
             }
-            logWrapper.debug("No response received, waiting...");
             timer.waitForNext();
         } while (true);
     }
@@ -390,14 +397,12 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
         get.setHeader(SALT_AUTH_TOKEN_HEADER, authToken);
         get.setHeader(REQUEST_ACCEPT_HEADER_NAME, JSON_RESPONSE_ACCEPT_TYPE);
         
-        logWrapper.info("Polling for job status with salt-api endpoint: [%s]", get.getURI());
         HttpResponse response = retryExecutor.execute(logWrapper, client, get, numRetries);
         
         try {
             if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
                 HttpEntity entity = response.getEntity();
                 String entityResponse = extractBodyFromEntity(entity);
-                logWrapper.debug("Received response for jobs/%s = %s", jid, response);
                 Gson gson = new Gson();
                 Map<String, List<Map<String, Object>>> result = gson.fromJson(entityResponse, JOB_RESPONSE_TYPE);
                 List<Map<String, Object>> responses = result.get(SALT_OUTPUT_RETURN_KEY);
@@ -406,6 +411,7 @@ public class SaltApiNodeStepPlugin implements NodeStepPlugin {
                 } else if (responses.size() == 1) {
                     Map<String, Object> minionResponse = responses.get(0);
                     if (minionResponse.containsKey(minionId)) {
+                        logWrapper.debug("Received response for jobs/%s = %s", jid, response);
                         Object responseObj = minionResponse.get(minionId);
                         return gson.toJson(responseObj);
                     }

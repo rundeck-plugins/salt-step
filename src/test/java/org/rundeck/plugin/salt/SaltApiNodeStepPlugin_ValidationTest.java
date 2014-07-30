@@ -89,7 +89,7 @@ public class SaltApiNodeStepPlugin_ValidationTest extends AbstractSaltApiNodeSte
 
     @Test
     public void testValidateChecksValidEndpointHttpUrl() throws NodeStepException {
-        plugin.saltEndpoint = "http://some.machine.com";
+        plugin.saltEndpoint = "https://some.machine.com";
         plugin.validate(PARAM_USER, PARAM_PASSWORD, node);
     }
 
