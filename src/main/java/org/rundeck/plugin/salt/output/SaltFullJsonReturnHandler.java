@@ -34,7 +34,6 @@ import java.util.List;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
-import com.google.gson.reflect.TypeToken;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Set;
@@ -85,6 +84,9 @@ public class SaltFullJsonReturnHandler implements SaltReturnHandler {
 
             if (exitCodeKey != null) {
 			    List<String> results=getValues(result, exitCodeKey);
+				if (results.size() == 0) {
+				  throw new SaltReturnResponseParseException("No " + exitCodeKey + " attribute in JSON output");
+				}
 				Integer exitCode=new Integer(0);
 				for (String tmp : results) {
 				  if (!"true".equalsIgnoreCase(tmp))
@@ -94,11 +96,19 @@ public class SaltFullJsonReturnHandler implements SaltReturnHandler {
             }
 
             if (standardOutputKey != null) {
-			    response.addOutput(getValues(result, standardOutputKey).toString());
+			    List<String> results=getValues(result, standardOutputKey);
+				if (results.size() == 0) {
+				  throw new SaltReturnResponseParseException("No " + standardOutputKey + " attribute in JSON output");
+				}
+			    response.addOutput(results.toString());
             }
 
             if (standardErrorKey != null) {
-			    response.addError(getValues(result, standardErrorKey).toString());
+			    List<String> results=getValues(result, standardErrorKey);			
+				if (results.size() == 0) {
+				  throw new SaltReturnResponseParseException("No " + standardErrorKey + " attribute in JSON output");
+				}			
+			    response.addError(results.toString());
             }
      
             return response; 
