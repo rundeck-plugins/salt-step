@@ -79,36 +79,36 @@ public class SaltFullJsonReturnHandler implements SaltReturnHandler {
     public SaltReturnResponse extractResponse(String rawResponse) throws SaltReturnResponseParseException {
         try {
             Gson gson = new Gson();
-			Object result = gson.fromJson(rawResponse, Object.class);
+	    Object result = gson.fromJson(rawResponse, Object.class);
             SaltReturnResponse response = new SaltReturnResponse();
 
             if (exitCodeKey != null) {
-			    List<String> results=getValues(result, exitCodeKey);
-				if (results.size() == 0) {
-				  throw new SaltReturnResponseParseException("No " + exitCodeKey + " attribute in JSON output");
-				}
-				Integer exitCode=new Integer(0);
-				for (String tmp : results) {
-				  if (!"true".equalsIgnoreCase(tmp))
-				    exitCode=1;
-				}
-				response.setExitCode(exitCode);
+	        List<String> results=getValues(result, exitCodeKey);
+		if (results.size() == 0) {
+		    throw new SaltReturnResponseParseException("No " + exitCodeKey + " attribute in JSON output");
+		}
+		Integer exitCode=new Integer(0);
+		for (String tmp : results) {
+		if (!"true".equalsIgnoreCase(tmp))
+		    exitCode=1;
+		}
+		response.setExitCode(exitCode);
             }
 
             if (standardOutputKey != null) {
-			    List<String> results=getValues(result, standardOutputKey);
-				if (results.size() == 0) {
-				  throw new SaltReturnResponseParseException("No " + standardOutputKey + " attribute in JSON output");
-				}
-			    response.addOutput(results.toString());
+	        List<String> results=getValues(result, standardOutputKey);
+		if (results.size() == 0) {
+		   throw new SaltReturnResponseParseException("No " + standardOutputKey + " attribute in JSON output");
+		}
+		response.addOutput(results.toString());
             }
 
             if (standardErrorKey != null) {
-			    List<String> results=getValues(result, standardErrorKey);			
-				if (results.size() == 0) {
-				  throw new SaltReturnResponseParseException("No " + standardErrorKey + " attribute in JSON output");
-				}			
-			    response.addError(results.toString());
+		List<String> results=getValues(result, standardErrorKey);			
+		if (results.size() == 0) {
+		    throw new SaltReturnResponseParseException("No " + standardErrorKey + " attribute in JSON output");
+		}			
+		response.addError(results.toString());
             }
      
             return response; 
@@ -117,25 +117,25 @@ public class SaltFullJsonReturnHandler implements SaltReturnHandler {
         }
     }
 
-	private List getValues(Object object, String attribute) {
-	    ArrayList<String> attributeValues = new ArrayList<String>();
-		if (object instanceof Map) {
-		  Map map = (Map) object;
-		  for ( String key : (Set<String>)map.keySet() ) { 
-		    if (attribute.equalsIgnoreCase(key)) {
-				attributeValues.add(map.get(key).toString());
-			} 
-          }
-		  Collection values = map.values();
-		  for (Object value : values)
-		    attributeValues.addAll(getValues(value, attribute));
-		}
-		else if (object instanceof Collection) {
-		  Collection values = (Collection) object;
- 		  for (Object value : values) {
-		    attributeValues.addAll(getValues(value, attribute));
-		  }
-		}
-		return attributeValues;
-	}	
+    private List getValues(Object object, String attribute) {
+        ArrayList<String> attributeValues = new ArrayList<String>();
+	if (object instanceof Map) {
+  	    Map map = (Map) object;
+	    for ( String key : (Set<String>)map.keySet() ) { 
+	        if (attribute.equalsIgnoreCase(key)) {
+		    attributeValues.add(map.get(key).toString());
+	        } 
+            }
+	    Collection values = map.values();
+	    for (Object value : values)
+	        attributeValues.addAll(getValues(value, attribute));
+	    }
+	else if (object instanceof Collection) {
+	    Collection values = (Collection) object;
+ 	     for (Object value : values) {
+	         attributeValues.addAll(getValues(value, attribute));
+	     }
+	}
+        return attributeValues;
+    }	
 }
