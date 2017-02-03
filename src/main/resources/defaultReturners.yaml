@@ -6,7 +6,7 @@ fullJsonCommandParser: &fullJsonCommandParser !!org.rundeck.plugin.salt.output.S
 
 handlerMappings:
     cmd.run_all: *defaultCommandParser
-	state.sls : *fullJsonCommandParser
+    state.sls : *fullJsonCommandParser
     file.touch:  *alwaysSuccessful
     file.append: *alwaysSuccessful
     file.remove: *alwaysSuccessful
