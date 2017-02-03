@@ -35,7 +35,7 @@ This plugin requires three properties that need to be configured for each step:
 
 - `SALT_API_END_POINT`: the URL of the salt-api endpoint (e.g. https://localhost:8000)
 - `Function`: the function to be passed to the salt-api call (excluding the target) 
--- For example, if you enter `test.ping` for the function value, the resulting salt call will be `salt <​yourHostName>​ test.ping`. The target will always default to the hostname of the Rundeck server. 
+-- For example, if you enter `test.ping` for the function value, the resulting salt call will be `salt <​yourHostName>​ test.ping`. The target will always default to the hostname of the Rundeck server. You can enter for example `cmd.run_all "ls -l /tmp"` or `state.sls test001` for the function value.
 - `SALT_API_EAUTH`: the authenticati​on mechanism that should be used by salt-api
 -- This would be the equivalent to the `-a` parameter being passed on the command line 	(e.g. `salt -a pam <target> test.ping`)
 - `SALT_API_VERSION` (optional): The expected version of salt-api. Defaults to latest if left blank.
