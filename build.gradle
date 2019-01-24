@@ -7,7 +7,7 @@ import org.gradle.api.internal.project.ProjectInternal
 apply plugin: 'java';
 apply plugin: 'eclipse';
 apply plugin: 'idea';
-apply from: 'gradle/cobertura.gradle'
+//apply from: 'gradle/cobertura.gradle'
 
 description 'This plugin provides the ability execute tasks on salt masters'
 eclipse.project.name = "${name}"
@@ -79,11 +79,19 @@ dependencies {
 def packagedJars = configurations.runtime.files.collect { "$it.name" }.join(" ")
 jar {
     manifest {
-        attributes 'Rundeck-Plugin-Version': rundeckPluginVersion,
-            'Rundeck-Plugin-Archive': 'true',
-            'Rundeck-Plugin-File-Version': version,
-            'Rundeck-Plugin-Classnames': pluginClassNames,
-            'Rundeck-Plugin-Libs': packagedJars
+        attributes 'Rundeck-Plugin-Name': 'Salt Step'
+        attributes 'Rundeck-Plugin-Description': 'A Rundeck NodeStepPlugin that allows Rundeck to delegate tasks to a Salt master by executing the request over salt-api.'
+        attributes 'Rundeck-Plugin-Rundeck-Compatibility-Version': '2.x'
+        attributes 'Rundeck-Plugin-Tags': 'java,node step,salt'
+        attributes 'Rundeck-Plugin-License': 'Apache 2.0'
+        attributes 'Rundeck-Plugin-Source-Link': 'https://github.com/rundeck-plugins/salt-step'
+        attributes 'Rundeck-Plugin-Target-Host-Compatibility': 'all'
+        attributes 'Rundeck-Plugin-Author': 'Rundeck, Inc.'
+        attributes 'Rundeck-Plugin-Version': rundeckPluginVersion
+        attributes 'Rundeck-Plugin-Archive': 'true'
+        attributes 'Rundeck-Plugin-File-Version': version
+        attributes 'Rundeck-Plugin-Classnames': pluginClassNames
+        attributes 'Rundeck-Plugin-Libs': packagedJars
     }
     from configurations.pluginCompile
 }

@@ -1,4 +1,4 @@
-#Rundeck Salt-Step Plugin
+Rundeck Salt-Step Plugin
 =========================
 
 ##Description
