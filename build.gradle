@@ -83,7 +83,7 @@ jar {
         attributes 'Rundeck-Plugin-Description': 'A Rundeck NodeStepPlugin that allows Rundeck to delegate tasks to a Salt master by executing the request over salt-api.'
         attributes 'Rundeck-Plugin-Rundeck-Compatibility-Version': '2.x'
         attributes 'Rundeck-Plugin-Tags': 'java,node step,salt'
-        attributes 'Rundeck-Plugin-License': 'Apache 2.0'
+        attributes 'Rundeck-Plugin-License': 'Custom'
         attributes 'Rundeck-Plugin-Source-Link': 'https://github.com/rundeck-plugins/salt-step'
         attributes 'Rundeck-Plugin-Target-Host-Compatibility': 'all'
         attributes 'Rundeck-Plugin-Author': 'Rundeck, Inc.'
