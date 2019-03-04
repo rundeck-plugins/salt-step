@@ -2,9 +2,11 @@
 
 defaultCommandParser: &defaultCommandParser !!org.rundeck.plugin.salt.output.SaltJsonReturnHandler {exitCodeKey: retcode, standardOutputKey: stdout, standardErrorKey: stderr}
 alwaysSuccessful: &alwaysSuccessful !!org.rundeck.plugin.salt.output.DefaultSaltReturnHandler { exitCode: 0 }
+fullJsonCommandParser: &fullJsonCommandParser !!org.rundeck.plugin.salt.output.SaltFullJsonReturnHandler {exitCodeKey: result, standardOutputKey: comment, standardErrorKey: comment}
 
 handlerMappings:
     cmd.run_all: *defaultCommandParser
+    state.sls : *fullJsonCommandParser
     file.touch:  *alwaysSuccessful
     file.append: *alwaysSuccessful
     file.remove: *alwaysSuccessful
