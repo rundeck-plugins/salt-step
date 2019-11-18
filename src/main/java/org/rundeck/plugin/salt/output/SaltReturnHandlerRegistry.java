@@ -136,7 +136,15 @@ public class SaltReturnHandlerRegistry {
     }
 
     protected void configureFromFile(String file) throws FileNotFoundException, IOException {
-        FileInputStream fis = new FileInputStream(new File(file));
+        File f = new File(file.trim().replaceAll("^\"|\"$",""));
+        if(!f.exists()){
+            throw new FileNotFoundException(java.lang.String.format("File %s not found. Current dir: %s", file, new File("").getAbsolutePath()));
+        }
+        if(!f.canRead() || !f.canWrite()){
+            throw new FileNotFoundException("Not enough permission");
+        }
+
+        FileInputStream fis = new FileInputStream(f);
         try {
             configureFromInputStream(fis);
         } finally {

@@ -49,7 +49,6 @@ This plugin requires three properties that need to be configured for each step:
 -- http vs https
 
 ## Setting up salt return response parsers
-===================
 This plugin interacts with salt and salt-api. By default, it requests JSON payloads. YAML configuratio​n files are used to determine how it should parse the output and behave with respect to exit codes, standard output, and standard error.
 
 ### YAML Configuration File Format
@@ -86,6 +85,6 @@ Thanks for contributing to the project!
 * Rebase changes into as few commits as makes sense.
 * Ensure that all commit messages accurately describe the changes.
 
-###​ Submitting a pull request
+### Submitting a pull request
 * Submit a pull request to the master branch of this project.
 * Ensure that the pull request has a clear description of the included changes.
