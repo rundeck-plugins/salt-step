@@ -29,6 +29,7 @@ repositories {
 
 wrapper {
     gradleVersion = '8.10.2'
+    distributionType = Wrapper.DistributionType.BIN
 }
 
 defaultTasks('assemble')  // Changed to focus on build for CI/CD
@@ -50,22 +51,24 @@ configurations {
 }
 
 dependencies {
-    implementation (
-        'org.rundeck:rundeck-core:3.4.+'
-    ) 
+    implementation ("org.rundeck:rundeck-core:${rundeckCoreVersion}") {
+        exclude group: 'commons-lang', module: 'commons-lang'
+    }
+    // Replace excluded commons-lang with secure commons-lang3
+    implementation "org.apache.commons:commons-lang3:${commonsLang3Version}" 
     pluginCompile (
-        'com.google.code.gson:gson:2.10.1',
-        'com.google.guava:guava:32.1.3-jre',
-        'commons-validator:commons-validator:1.7',
-        'org.springframework:spring-context:5.3.31',
-        'org.apache.httpcomponents:httpclient:4.5.14',
-        'commons-io:commons-io:2.11.0',
-        'com.google.code.findbugs:jsr305:3.0.2',
-        'javax.annotation:javax.annotation-api:1.3.2'
+        "com.google.code.gson:gson:${gsonVersion}",
+        "com.google.guava:guava:${guavaVersion}",
+        "commons-validator:commons-validator:${commonsValidatorVersion}",
+        "org.springframework:spring-context:${springVersion}",
+        "org.apache.httpcomponents:httpclient:${httpclientVersion}",
+        "commons-io:commons-io:${commonsIoVersion}",
+        "com.google.code.findbugs:jsr305:${jsr305Version}",
+        "javax.annotation:javax.annotation-api:${javaxAnnotationVersion}"
     )
     testImplementation (
-        'junit:junit:4.13.2',
-        'org.mockito:mockito-core:4.11.0'
+        "junit:junit:${junitVersion}",
+        "org.mockito:mockito-core:${mockitoVersion}"
     )
 }
 
@@ -87,7 +90,7 @@ jar {
         attributes([
             'Rundeck-Plugin-Name': 'Salt Step',
             'Rundeck-Plugin-Description': 'A Rundeck NodeStepPlugin that allows Rundeck to delegate tasks to a Salt master by executing the request over salt-api.',
-            'Rundeck-Plugin-Rundeck-Compatibility-Version': '3.x',
+            'Rundeck-Plugin-Rundeck-Compatibility-Version': '5.x',
             'Rundeck-Plugin-Tags': 'java,node step,salt',
             'Rundeck-Plugin-License': 'Custom',
             'Rundeck-Plugin-Source-Link': 'https://github.com/rundeck-plugins/salt-step',
