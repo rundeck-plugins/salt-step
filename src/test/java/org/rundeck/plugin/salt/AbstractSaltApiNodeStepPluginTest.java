@@ -269,7 +269,7 @@ public abstract class AbstractSaltApiNodeStepPluginTest {
                     .toString());
             assertPostBody("username=%s&password=%s&eauth=%s", PARAM_USER, PARAM_PASSWORD, PARAM_EAUTH);
 
-            Mockito.verifyZeroInteractions(client);
+            Mockito.verifyNoInteractions(client);
             ArgumentCaptor<Predicate> captor = ArgumentCaptor.forClass(Predicate.class);
             Mockito.verify(retryingExecutor, Mockito.times(1)).execute(Mockito.same(log), Mockito.same(client),
                     Mockito.same(post), Mockito.eq(plugin.numRetries), captor.capture());
@@ -278,7 +278,7 @@ public abstract class AbstractSaltApiNodeStepPluginTest {
 
             Mockito.verify(plugin, Mockito.times(1)).closeResource(Mockito.same(responseEntity));
             Mockito.verify(post, Mockito.times(1)).releaseConnection();
-            Mockito.verifyZeroInteractions(client);
+            Mockito.verifyNoInteractions(client);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

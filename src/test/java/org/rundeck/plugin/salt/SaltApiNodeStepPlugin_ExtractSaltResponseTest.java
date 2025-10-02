@@ -108,7 +108,7 @@ public class SaltApiNodeStepPlugin_ExtractSaltResponseTest extends AbstractSaltA
                     SaltApiNodeStepPlugin.JSON_RESPONSE_ACCEPT_TYPE);
             Mockito.verify(retryingExecutor, Mockito.times(1)).execute(Mockito.same(log), Mockito.same(client),
                     Mockito.same(get), Mockito.eq(plugin.numRetries));
-            Mockito.verifyZeroInteractions(client);
+            Mockito.verifyNoInteractions(client);
 
             Mockito.verify(get, Mockito.times(1)).releaseConnection();
             Mockito.verify(plugin, Mockito.times(1)).closeResource(Mockito.same(responseEntity));

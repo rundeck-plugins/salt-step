@@ -63,7 +63,7 @@ public class SaltApiNodeStepPlugin_ExecuteTest extends AbstractSaltApiNodeStepPl
             Assert.assertEquals(SaltApiNodeStepFailureReason.AUTHENTICATION_FAILURE, e.getFailureReason());
         }
 
-        Mockito.verifyZeroInteractions(client, post);
+        Mockito.verifyNoInteractions(client, post);
     }
 
     @Test
