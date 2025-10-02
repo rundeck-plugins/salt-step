@@ -148,6 +148,7 @@ public class SaltReturnHandlerRegistry {
     @SuppressWarnings("unchecked")
     protected void configureFromInputStream(InputStream is) {
         LoaderOptions loaderOptions = new LoaderOptions();
+        loaderOptions.setAllowDuplicateKeys(false);
         Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader(), loaderOptions));
         Map<String, Object> document = (Map<String, Object>) yaml.load(is);
         if (document == null || !document.containsKey(HANDLER_MAPPINGS_KEY)) {
