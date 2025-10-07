@@ -36,10 +36,11 @@ import java.util.Properties;
 
 import javax.annotation.PostConstruct;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.CustomClassLoaderConstructor;
 
@@ -146,7 +147,9 @@ public class SaltReturnHandlerRegistry {
 
     @SuppressWarnings("unchecked")
     protected void configureFromInputStream(InputStream is) {
-        Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader()));
+        LoaderOptions loaderOptions = new LoaderOptions();
+        loaderOptions.setAllowDuplicateKeys(false);
+        Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader(), loaderOptions));
         Map<String, Object> document = (Map<String, Object>) yaml.load(is);
         if (document == null || !document.containsKey(HANDLER_MAPPINGS_KEY)) {
             throw new IllegalArgumentException(String.format("Expected yaml document with key: %s",
