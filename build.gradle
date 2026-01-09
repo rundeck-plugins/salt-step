@@ -1,84 +1,91 @@
 /**
  * The Rundeck salt plugin build file
  */
-import org.gradle.api.internal.GradleInternal
-import org.gradle.api.internal.project.ProjectInternal
+plugins {
+    id 'java'
+    id 'eclipse'
+    id 'idea'
+    id 'pl.allegro.tech.build.axion-release' version '1.18.17'
+    id 'maven-publish'
+}
 
-apply plugin: 'java';
-apply plugin: 'eclipse';
-apply plugin: 'idea';
-//apply from: 'gradle/cobertura.gradle'
+group = 'com.rundeck.plugins'
 
 description 'This plugin provides the ability execute tasks on salt masters'
 eclipse.project.name = "${name}"
 
 ext.pluginClassNames = 'org.rundeck.plugin.salt.SaltApiNodeStepPlugin'
+ext.rundeckPluginVersion = '1.1'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+    withSourcesJar()
+}
+
+// Skip javadoc for old plugin with javadoc errors
+tasks.withType(Javadoc).configureEach {
+    enabled = false
+}
+
+scmVersion {
+    ignoreUncommittedChanges = false
+    tag {
+        prefix = ''           // NO "v" prefix - see PLUGIN_TAGGING_ARCHITECTURE.md
+        versionSeparator = ''
+    }
+    versionCreator 'simple'  // Use simple version creator (just tag name)
+}
+
+version = scmVersion.version  // Dynamic version from git tag
 
 repositories {
     mavenLocal()
+    mavenCentral()
     maven {
-        url mavenCentralUrl
-	if (project.hasProperty('mavenUser') && project.hasProperty('mavenPassword')) {
-		credentials {
-			username mavenUser
-			password mavenPassword
-		}
-	}
+        name = 'Central Portal Snapshots'
+        url = 'https://central.sonatype.com/repository/maven-snapshots/'
+        content {
+            includeGroup('org.rundeck')
+        }
     }
-}
-
-task wrapper(type: Wrapper) {
-    gradleVersion = '1.4'
-}
-
-defaultTasks 'test', 'testCoberturaReport', 'assemble'
-
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
-
-// produce a jar file for our source files
-task sourceJar(type: Jar) {
-    classifier = 'sources'
-    from sourceSets.main.java
-}
-
-// add all of the artifacts above to our archives list
-artifacts {
-    archives sourceJar
 }
 
 configurations {
-    pluginCompile
-    compile {
-        extendsFrom pluginCompile
+    pluginLibs
+    implementation {
+        extendsFrom pluginLibs
     }
-    compile.exclude module: 'commons-httpclient'
 }
 
 dependencies {
-    compile (
-        'org.rundeck:rundeck-core:1.5+'
-    ) 
-    pluginCompile (
-        'com.google.code.gson:gson:2.2.2',
-        'com.google.guava:guava:14.0',
-        'commons-validator:commons-validator:1.4.0',
-        'org.springframework:spring-context:3.2.2.RELEASE',
-        'org.apache.httpcomponents:httpclient:4.2.4',
-        'org.apache.commons:commons-io:1.3.2',
-        'com.google.code.findbugs:jsr305:2.0.1'
-    )
-    testCompile (
-        'junit:junit:4.11',
-        'org.mockito:mockito-all:1.9.5',
-        'org.powermock:powermock-module-junit4:1.5',
-        'org.powermock:powermock-api-mockito:1.5'
-    )
+    implementation 'org.rundeck:rundeck-core:6.0.0-SNAPSHOT'
+    
+    pluginLibs 'com.google.code.gson:gson:2.10.1'
+    pluginLibs 'commons-validator:commons-validator:1.9.0'
+    pluginLibs 'org.springframework:spring-context:6.1.14'
+    pluginLibs 'org.apache.httpcomponents:httpclient:4.5.14'
+    pluginLibs 'commons-io:commons-io:2.17.0'
+    pluginLibs 'com.google.code.findbugs:jsr305:3.0.2'
+    pluginLibs 'org.yaml:snakeyaml:1.30'  // 1.30 maintains old CustomClassLoaderConstructor API
+    
+    // Java 11+ removed javax.annotation, need to add it explicitly
+    implementation 'javax.annotation:javax.annotation-api:1.3.2'
+    
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:5.14.2'
 }
 
-def packagedJars = configurations.runtime.files.collect { "$it.name" }.join(" ")
+// task to copy plugin libs to output/lib dir
+task copyToLib(type: Copy) {
+    into "$buildDir/output/lib"
+    from configurations.pluginLibs
+}
+
 jar {
+    from "$buildDir/output"
     manifest {
+        def libList = configurations.pluginLibs.collect{'lib/' + it.name}.join(' ')
         attributes 'Rundeck-Plugin-Name': 'Salt Step'
         attributes 'Rundeck-Plugin-Description': 'A Rundeck NodeStepPlugin that allows Rundeck to delegate tasks to a Salt master by executing the request over salt-api.'
         attributes 'Rundeck-Plugin-Rundeck-Compatibility-Version': '2.x'
@@ -91,7 +98,43 @@ jar {
         attributes 'Rundeck-Plugin-Archive': 'true'
         attributes 'Rundeck-Plugin-File-Version': version
         attributes 'Rundeck-Plugin-Classnames': pluginClassNames
-        attributes 'Rundeck-Plugin-Libs': packagedJars
+        attributes 'Rundeck-Plugin-Libs': "${libList}"
     }
-    from configurations.pluginCompile
+    dependsOn(copyToLib)
+}
+
+test {
+    useJUnit()
+    
+    // Java 17+ module access
+    jvmArgs = [
+        '--add-opens=java.base/java.lang=ALL-UNNAMED',
+        '--add-opens=java.base/java.util=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED'
+    ]
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'com.rundeck.plugins'
+            artifactId = 'salt-step'
+            version = project.version
+            from components.java
+        }
+    }
+    
+    repositories {
+        maven {
+            name = "PackageCloudTest"
+            url = uri("https://packagecloud.io/pagerduty/rundeckpro-test/maven2")
+            authentication {
+                header(HttpHeaderAuthentication)
+            }
+            credentials(HttpHeaderCredentials) {
+                name = "Authorization"
+                value = "Bearer " + (System.getenv("PKGCLD_WRITE_TOKEN") ?: project.findProperty("pkgcldWriteToken"))
+            }
+        }
+    }
 }

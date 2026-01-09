@@ -146,7 +146,7 @@ public class SaltReturnHandlerRegistry {
 
     @SuppressWarnings("unchecked")
     protected void configureFromInputStream(InputStream is) {
-        Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader()));
+        Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader(), new org.yaml.snakeyaml.LoaderOptions()));
         Map<String, Object> document = (Map<String, Object>) yaml.load(is);
         if (document == null || !document.containsKey(HANDLER_MAPPINGS_KEY)) {
             throw new IllegalArgumentException(String.format("Expected yaml document with key: %s",
