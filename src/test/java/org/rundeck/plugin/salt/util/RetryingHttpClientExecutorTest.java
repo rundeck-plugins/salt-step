@@ -86,7 +86,7 @@ public class RetryingHttpClientExecutorTest {
     public void testSuccessfulGet() throws Exception {
         setupResponseCode(get, HttpStatus.SC_ACCEPTED);
         Assert.assertSame("Expected mocked response to be returned.", response, executor.execute(logger, client, get, 10));
-        Mockito.verifyZeroInteractions(timer);
+        Mockito.verifyNoInteractions(timer);
     }
 
     @Test
@@ -145,7 +145,7 @@ public class RetryingHttpClientExecutorTest {
         }));
 
         Mockito.verify(client, Mockito.times(1)).execute(Mockito.same(get));
-        Mockito.verifyZeroInteractions(timer);
+        Mockito.verifyNoInteractions(timer);
     }
 
     @Test
