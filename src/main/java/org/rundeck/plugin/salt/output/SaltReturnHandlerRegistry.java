@@ -147,7 +147,6 @@ public class SaltReturnHandlerRegistry {
 
     @SuppressWarnings("unchecked")
     protected void configureFromInputStream(InputStream is) {
-        Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader(), new org.yaml.snakeyaml.LoaderOptions()));
         LoaderOptions loaderOptions = new LoaderOptions();
         loaderOptions.setAllowDuplicateKeys(false);
         Yaml yaml = new Yaml(new CustomClassLoaderConstructor(getClass().getClassLoader(), loaderOptions));
