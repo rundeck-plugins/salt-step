@@ -11,12 +11,6 @@ plugins {
 
 group = 'com.rundeck.plugins'
 
-plugins {
-    id 'java'
-    id 'eclipse'
-    id 'idea'
-}
-
 description = 'This plugin provides the ability execute tasks on salt masters'
 eclipse.project.name = "${name}"
 
