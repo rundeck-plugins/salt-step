@@ -53,12 +53,6 @@ repositories {
         url = 'https://central.sonatype.com/repository/maven-snapshots/'
         content {
             includeGroup('org.rundeck')
-        url = mavenCentralUrl
-        if (project.hasProperty('mavenUser') && project.hasProperty('mavenPassword')) {
-            credentials {
-                username = mavenUser
-                password = mavenPassword
-            }
         }
     }
 }
