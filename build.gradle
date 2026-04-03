@@ -84,51 +84,6 @@ task copyToLib(type: Copy) {
     from configurations.pluginLibs
 }
 
-wrapper {
-    gradleVersion = '8.10.2'
-    distributionType = Wrapper.DistributionType.BIN
-}
-
-defaultTasks('assemble')  // Changed to focus on build for CI/CD
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
-    withSourcesJar()
-}
-
-// Source jar is now handled by java.withSourcesJar() above
-
-configurations {
-    pluginCompile
-    implementation {
-        extendsFrom pluginCompile
-    }
-    implementation.exclude module: 'commons-httpclient'
-}
-
-dependencies {
-    implementation ("org.rundeck:rundeck-core:${rundeckCoreVersion}") {
-        exclude group: 'commons-lang', module: 'commons-lang'
-    }
-    // Replace excluded commons-lang with secure commons-lang3
-    implementation "org.apache.commons:commons-lang3:${commonsLang3Version}" 
-    pluginCompile (
-        "com.google.code.gson:gson:${gsonVersion}",
-        "com.google.guava:guava:${guavaVersion}",
-        "commons-validator:commons-validator:${commonsValidatorVersion}",
-        "org.springframework:spring-context:${springVersion}",
-        "org.apache.httpcomponents:httpclient:${httpclientVersion}",
-        "commons-io:commons-io:${commonsIoVersion}",
-        "com.google.code.findbugs:jsr305:${jsr305Version}",
-        "javax.annotation:javax.annotation-api:${javaxAnnotationVersion}"
-    )
-    testImplementation (
-        "junit:junit:${junitVersion}",
-        "org.mockito:mockito-core:${mockitoVersion}"
-    )
-}
-
 test {
     testLogging {
         events "passed", "skipped", "failed"
