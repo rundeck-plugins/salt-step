@@ -16,6 +16,8 @@ eclipse.project.name = "${name}"
 
 ext.pluginClassNames = 'org.rundeck.plugin.salt.SaltApiNodeStepPlugin'
 ext.rundeckPluginVersion = '1.1'
+ext.rundeckCoreVersion = '6.0.0-SNAPSHOT'
+ext.commonsLang3Version = '3.20.0'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
