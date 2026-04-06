@@ -6,12 +6,17 @@ plugins {
     id 'eclipse'
     id 'idea'
     alias(libs.plugins.axionRelease)
-    id 'maven-publish'
+    alias(libs.plugins.nexusPublish)
 }
 
-group = 'com.rundeck.plugins'
+group = 'org.rundeck.plugins'
 
 description = 'This plugin provides the ability execute tasks on salt masters'
+ext.publishName = "Salt Step ${project.version}"
+ext.githubSlug = 'rundeck-plugins/salt-step'
+ext.developers = [
+        [id: 'gschueler', name: 'Greg Schueler', email: 'greg@rundeck.com']
+]
 eclipse.project.name = "${name}"
 
 ext.pluginClassNames = 'org.rundeck.plugin.salt.SaltApiNodeStepPlugin'
@@ -21,11 +26,13 @@ java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
     withSourcesJar()
+    withJavadocJar()
 }
 
-// Skip javadoc for old plugin with javadoc errors
+// Maven Central requires a -javadoc.jar; historical javadoc errors — still emit the artifact
 tasks.withType(Javadoc).configureEach {
-    enabled = false
+    failOnError = false
+    options.encoding = 'UTF-8'
 }
 
 scmVersion {
@@ -59,8 +66,9 @@ configurations {
 }
 
 dependencies {
-    implementation libs.rundeckCore
-    
+    compileOnly libs.rundeckCore
+    testImplementation libs.rundeckCore
+
     pluginLibs libs.gson
     pluginLibs libs.commonsValidator
     pluginLibs libs.springContext
@@ -125,27 +133,23 @@ test {
     ignoreFailures = true
 }
 
-publishing {
-    publications {
-        maven(MavenPublication) {
-            groupId = 'com.rundeck.plugins'
-            artifactId = 'salt-step'
-            version = project.version
-            from components.java
+nexusPublishing {
+    packageGroup = 'org.rundeck.plugins'
+    repositories {
+        sonatype {
+            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
         }
     }
-    
-    repositories {
-        maven {
-            name = "PackageCloudTest"
-            url = uri("https://packagecloud.io/pagerduty/rundeckpro-test/maven2")
-            authentication {
-                header(HttpHeaderAuthentication)
-            }
-            credentials(HttpHeaderCredentials) {
-                name = "Authorization"
-                value = "Bearer " + (System.getenv("PKGCLD_WRITE_TOKEN") ?: project.findProperty("pkgcldWriteToken"))
-            }
+}
+
+apply from: "${rootDir}/gradle/publishing.gradle"
+
+// Historical Maven coordinate: jar file stays rundeck-salt-plugin-*.jar for GitHub release asset path.
+publishing {
+    publications {
+        named("${project.name}", MavenPublication) {
+            artifactId = 'salt-step'
         }
     }
 }
