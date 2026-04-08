@@ -58,25 +58,19 @@ repositories {
     }
 }
 
-configurations {
-    pluginLibs
-    implementation {
-        extendsFrom pluginLibs
-    }
-}
-
 dependencies {
     compileOnly libs.rundeckCore
     testImplementation libs.rundeckCore
-
-    pluginLibs libs.gson
-    pluginLibs libs.commonsValidator
-    pluginLibs libs.springContext
-    pluginLibs libs.httpclient
-    pluginLibs libs.commonsIo
-    pluginLibs libs.jsr305
-    pluginLibs libs.snakeyaml
-    pluginLibs libs.commonsLang3
+    
+    // Dependencies provided by rundeck-core at runtime, needed at compile time
+    implementation libs.gson
+    implementation libs.commonsValidator
+    implementation libs.springContext
+    implementation libs.httpclient
+    implementation libs.commonsIo
+    implementation libs.jsr305
+    implementation libs.snakeyaml
+    implementation libs.commonsLang3
     
     // Java 11+ removed javax.annotation, need to add it explicitly
     implementation libs.javaxAnnotation
@@ -85,17 +79,8 @@ dependencies {
     testImplementation libs.mockito
 }
 
-// task to copy plugin libs to output/lib dir
-task copyToLib(type: Copy) {
-    into "$buildDir/output/lib"
-    from configurations.pluginLibs
-}
-
-def packagedJars = configurations.runtimeClasspath.files.collect { "$it.name" }.join(" ")
 jar {
-    from "$buildDir/output"
     manifest {
-        def libList = configurations.pluginLibs.collect{'lib/' + it.name}.join(' ')
         attributes 'Rundeck-Plugin-Name': 'Salt Step'
         attributes 'Rundeck-Plugin-Description': 'A Rundeck NodeStepPlugin that allows Rundeck to delegate tasks to a Salt master by executing the request over salt-api.'
         attributes 'Rundeck-Plugin-Rundeck-Compatibility-Version': '2.x'
@@ -108,9 +93,7 @@ jar {
         attributes 'Rundeck-Plugin-Archive': 'true'
         attributes 'Rundeck-Plugin-File-Version': version
         attributes 'Rundeck-Plugin-Classnames': pluginClassNames
-        attributes 'Rundeck-Plugin-Libs': "${libList}"
     }
-    dependsOn(copyToLib)
 }
 
 test {
