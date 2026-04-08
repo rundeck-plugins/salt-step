@@ -10,3 +10,4 @@ rundeck-salt-plugin.iml
 .idea
 salt-step.ipr
 salt-step.iml
+.temp/
