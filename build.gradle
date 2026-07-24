@@ -57,6 +57,15 @@ repositories {
     }
 }
 
+configurations.all {
+    resolutionStrategy {
+        // Force commons-codec, pulled in transitively via httpclient 4.5.14, to a
+        // version that fixes SNYK-JAVA-COMMONSCODEC-561518 (CWE-200 info exposure).
+        // 1.22.0 matches what rundeck-core already resolves elsewhere in this graph.
+        force 'commons-codec:commons-codec:1.22.0'
+    }
+}
+
 dependencies {
     compileOnly libs.rundeckCore
     testImplementation libs.rundeckCore
