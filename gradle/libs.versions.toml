@@ -1,6 +1,6 @@
 [versions]
 gson = "2.14.0"
-commonsValidator = "1.10.1"
+commonsValidator = "1.11.0"
 springContext = "7.0.8"
 httpclient = "4.5.14"
 commonsIo = "2.22.0"
